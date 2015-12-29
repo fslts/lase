@@ -2,11 +2,24 @@ import nmap
 import time
 import math
 import hashlib
+import socket
 
 import ftplib
 import smb
 from smb.SMBConnection import SMBConnection
 from elasticsearch import Elasticsearch
+
+class ScannedHost:
+    def __init__(self, ip, ports):
+        self.ip = ip
+        self.ports = ports
+        self._host_name = None
+
+    def host_name(self):
+        if not self._host_name:
+            (self._host_name, _, _) = socket.gethostbyaddr(self.ip)
+        return self._host_name
+
 
 class OnlineScanner:
 
@@ -15,10 +28,16 @@ class OnlineScanner:
         self.online = []
 
     def scan_range(self, range_):
-        res = self._nm.scan(hosts=range_, arguments='-p 21')
-        print(res)
-        self.online = self._nm.all_hosts()
-        return self.online
+        res = []
+        nmap_res = self._nm.scan(hosts=range_, arguments='-Pn -p 445')
+        for ip, data in nmap_res['scan'].items():
+
+            #TODO to method
+            ports = [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
+
+            if ports:
+                res.append(ScannedHost(ip, ports))
+        return res
 
 def traverse(ftp, depth=0):
     """
@@ -54,13 +73,13 @@ def smbwalk_shares(conn, es):
 
 def smbwalk(conn, es, share, path):
     try:
-        for item in conn.listPath(share, path): 
+        for item in conn.listPath(share, path):
             if item.filename in ['.', '..']:
                 continue
             #print(path + item.filename)
             new_path = path + item.filename
 
-            es.index(index='files', doc_type='file', id=hashlib.sha1(new_path.encode('utf-8')).digest(), body={'filename':item.filename, 'path':new_path})
+            es.index(index='lase_alt', doc_type='file', id=hashlib.sha1(new_path.encode('utf-8')).hexdigest(), body={'filename':item.filename, 'path':new_path})
             if item.isDirectory:
                 smbwalk(conn, es, share, path + item.filename + '/')
     except smb.smb_structs.OperationFailure as e:
@@ -70,7 +89,7 @@ def smbwalk(conn, es, share, path):
 
 
 
-    
+
 def main():
    # ftp = ftplib.FTP('147.175.187.131')
    # ftp.connect()
@@ -79,18 +98,18 @@ def main():
    # level = traverse(ftp)
    # print(level)
 
+    osc = OnlineScanner()
+    scanned = osc.scan_range('147.175.187.0/24')
+
     start = time.time()
     es = Elasticsearch()
 
-    conn = SMBConnection('', '', 'lase', 'sadista')
-    conn.connect('sadista.ynet.sk')
-    ans = smbwalk_shares(conn, es)
-    print(ans)
+    for host in scanned:
+        print(host.host_name())
+        conn = SMBConnection('', '', 'lase', host.host_name())
+        conn.connect(host.ip, 445)
+        smbwalk_shares(conn, es)
 
-    #print(verify_hosts(hosts_to_test()))
-    #print(isOpen('192.168.1.13', 445))
-   # osc = OnlineScanner()
-   # print(osc.scan_range('147.175.187.0/24'))
     print(time.time() - start)
 
 if __name__ == '__main__':
