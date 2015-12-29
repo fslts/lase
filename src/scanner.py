@@ -52,16 +52,6 @@ class OnlineScannerMock(OnlineScanner):
         return [ScannedHost('147.175.187.8', [445])]
 
 
-class CrawlerFactory():
-
-    def produce(self, host):
-        conn = SMBConnection('', '', 'lase', host.host_name())
-        conn.connect(host.ip)
-        es = Elasticsearch()
-
-        return [ SmbCrawler(conn, es) ]
-
-
 class AbstractCrawler:
 
     def crawl(self):
@@ -73,16 +63,10 @@ class SmbCrawler(AbstractCrawler):
         self._conn = conn
         self._proc = proc
 
-    def _shares(self):
-        return (share.name 
-                for share in self._conn.listShares()
-                if not share.isSpecial)
-
     def _crawl(self):
         for share in self._shares():
             print(share)
             self._smbwalk(share, '/')
-
 
     def _smbwalk(self, share, path):
         try:
@@ -93,6 +77,7 @@ class SmbCrawler(AbstractCrawler):
                 full_path = path + item.filename
 
                 #TODO visitor
+                #TODO index and doc_type to config
                 self._proc.index(index='lase_alt',
                                  doc_type='file',
                                  id=self._path_hash(full_path),
@@ -104,11 +89,50 @@ class SmbCrawler(AbstractCrawler):
             #TODO logger
             print(e)
 
+    def _shares(self):
+        return (share.name
+                for share in self._conn.listShares()
+                if not share.isSpecial)
+
     def _path_hash(self, path):
         return hashlib.sha1(path.encode('utf-8')).hexdigest()
 
 
+class CrawlerFactory():
+
+    def produce(self, host):
+        crawlers = []
+
+        es = Elasticsearch()
+        if self._smb_open(host):
+            crawlers.append(self._produce_smb(host, es))
+
+        return crawlers
+
+    def _produce_smb(host, es):
+        conn = SMBConnection('', '', 'lase', host.host_name())
+
+        if 445 in host.ports:
+            conn.connect(host.ip, 445)
+        else:
+            conn.connect(host.ip)
+        return SmbCrawler(conn, es)
+
+    def _smb_open(host):
+        return 445 in host.ports or 139 in host.ports
+
+    def _ftp_open(host):
+        return 21 in host.ports
+
+
 #FTP
+# ftp = ftplib.FTP('147.175.187.131')
+# ftp.connect()
+# ftp.login()
+# ftp.set_pasv(True)
+# level = traverse(ftp)
+# print(level)
+
 def traverse(ftp, depth=0):
 
     if depth > 10:
@@ -131,13 +155,6 @@ def _ranges_to_str(ranges):
     return ranges[0]
 
 def scan(ranges):
-   # ftp = ftplib.FTP('147.175.187.131')
-   # ftp.connect()
-   # ftp.login()
-   # ftp.set_pasv(True)
-   # level = traverse(ftp)
-   # print(level)
-
     start = time.time()
 
     nm = nmap.PortScanner()
@@ -152,8 +169,6 @@ def scan(ranges):
     for host in scanned:
         print(host.full_host_name())
         crawlers += cf.produce(host)
-
-    print(crawlers)
 
     try:
         for c in crawlers:
