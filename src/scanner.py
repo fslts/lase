@@ -3,6 +3,7 @@ import time
 import math
 import hashlib
 import socket
+import ipaddress
 
 import ftplib
 import smb
@@ -20,6 +21,9 @@ class ScannedHost:
             (self._host_name, _, _) = socket.gethostbyaddr(self.ip)
         return self._host_name
 
+    def remote_name(self):
+        return self.host_name().split('.')[0]
+
 
 class OnlineScanner:
 
@@ -29,8 +33,9 @@ class OnlineScanner:
 
     def scan_range(self, range_):
         res = []
-        nmap_res = self._nm.scan(hosts=range_, arguments='-Pn -p 445')
+        nmap_res = self._nm.scan(hosts=range_, ports='445', arguments='-Pn')
         for ip, data in nmap_res['scan'].items():
+            print(ip)
 
             #TODO to method
             ports = [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
@@ -40,16 +45,7 @@ class OnlineScanner:
         return res
 
 def traverse(ftp, depth=0):
-    """
-    return a recursive listing of an ftp server contents (starting
-    from the current directory)
 
-    listing is returned as a recursive dictionary, where each key
-    contains a contents of the subdirectory or None if it corresponds
-    to a file.
-
-    @param ftp: ftplib.FTP object
-    """
     if depth > 10:
         return ['depth > 10']
     level = {}
@@ -61,34 +57,33 @@ def traverse(ftp, depth=0):
             ftp.cwd('..')
         except ftplib.error_perm:
             pass
-    #return level
 
 def shares(conn):
     return ( share.name for share in conn.listShares() if not share.isSpecial )
 
 def smbwalk_shares(conn, es):
+
     for share in shares(conn):
         print(share)
         smbwalk(conn, es, share, '/')
 
+
 def smbwalk(conn, es, share, path):
     try:
         for item in conn.listPath(share, path):
-            if item.filename in ['.', '..']:
+            if item.filename in ['.', '..', '']:
                 continue
             #print(path + item.filename)
-            new_path = path + item.filename
+            full_path = path + item.filename
 
-            es.index(index='lase_alt', doc_type='file', id=hashlib.sha1(new_path.encode('utf-8')).hexdigest(), body={'filename':item.filename, 'path':new_path})
+            #TODO visitor
+            es.index(index='lase_alt', doc_type='file', id=hashlib.sha1(newpath.encode('utf-8')).hexdigest(), body={'filename':item.filename, 'path':path})
+
             if item.isDirectory:
                 smbwalk(conn, es, share, path + item.filename + '/')
     except smb.smb_structs.OperationFailure as e:
-        #TODO dorobit
+        #TODO logger
         print(e)
-        #print('error')
-
-
-
 
 def main():
    # ftp = ftplib.FTP('147.175.187.131')
@@ -99,20 +94,28 @@ def main():
    # print(level)
 
     osc = OnlineScanner()
-    scanned = osc.scan_range('147.175.187.0/24')
+    #TODO to config
+    scanned = osc.scan_range('147.175.187.2-254')
 
     start = time.time()
     es = Elasticsearch()
 
     for host in scanned:
         print(host.host_name())
-        conn = SMBConnection('', '', 'lase', host.host_name())
-        conn.connect(host.ip, 445)
-        smbwalk_shares(conn, es)
+        try:
+            conn = SMBConnection('', '', 'lase', host.remote_name())
+            conn.connect(host.ip)
+
+            smbwalk_shares(conn, es)
+        except socket.timeout:
+            #TODO logger
+            print('timeout')
+        except smb.base.NotReadyError as e:
+            #TODO logger
+            print(e)
 
     print(time.time() - start)
 
+
 if __name__ == '__main__':
     main()
-
-
