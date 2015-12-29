@@ -16,19 +16,19 @@ class ScannedHost:
         self.ports = ports
         self._host_name = None
 
-    def host_name(self):
+    def full_host_name(self):
         if not self._host_name:
             (self._host_name, _, _) = socket.gethostbyaddr(self.ip)
         return self._host_name
 
-    def remote_name(self):
-        return self.host_name().split('.')[0]
+    def host_name(self):
+        return self.full_host_name().split('.')[0]
 
 
 class OnlineScanner:
 
-    def __init__(self):
-        self._nm = nmap.PortScanner()
+    def __init__(self, nmap):
+        self._nm = nmap
         self.online = []
 
     def scan_range(self, range_):
@@ -43,7 +43,72 @@ class OnlineScanner:
             if ports:
                 res.append(ScannedHost(ip, ports))
         return res
+#TODO remove after main debugging phase finishes
+class OnlineScannerMock(OnlineScanner):
+    def __init__(self, nmap):
+        self._nm = nmap
 
+    def scan_range(self, range_):
+        return [ScannedHost('147.175.187.8', [445])]
+
+
+class CrawlerFactory():
+
+    def produce(self, host):
+        conn = SMBConnection('', '', 'lase', host.host_name())
+        conn.connect(host.ip)
+        es = Elasticsearch()
+
+        return [ SmbCrawler(conn, es) ]
+
+
+class AbstractCrawler:
+
+    def crawl(self):
+        self._crawl()
+
+
+class SmbCrawler(AbstractCrawler):
+    def __init__(self, conn, proc):
+        self._conn = conn
+        self._proc = proc
+
+    def _shares(self):
+        return (share.name 
+                for share in self._conn.listShares()
+                if not share.isSpecial)
+
+    def _crawl(self):
+        for share in self._shares():
+            print(share)
+            self._smbwalk(share, '/')
+
+
+    def _smbwalk(self, share, path):
+        try:
+            for item in self._conn.listPath(share, path):
+                if item.filename in ['.', '..', '']:
+                    continue
+                #print(path + item.filename)
+                full_path = path + item.filename
+
+                #TODO visitor
+                self._proc.index(index='lase_alt',
+                                 doc_type='file',
+                                 id=self._path_hash(full_path),
+                                 body={'filename':item.filename, 'path':path})
+
+                if item.isDirectory:
+                    self._smbwalk(share, path + item.filename + '/')
+        except smb.smb_structs.OperationFailure as e:
+            #TODO logger
+            print(e)
+
+    def _path_hash(self, path):
+        return hashlib.sha1(path.encode('utf-8')).hexdigest()
+
+
+#FTP
 def traverse(ftp, depth=0):
 
     if depth > 10:
@@ -58,34 +123,14 @@ def traverse(ftp, depth=0):
         except ftplib.error_perm:
             pass
 
-def shares(conn):
-    return ( share.name for share in conn.listShares() if not share.isSpecial )
-
-def smbwalk_shares(conn, es):
-
-    for share in shares(conn):
-        print(share)
-        smbwalk(conn, es, share, '/')
 
 
-def smbwalk(conn, es, share, path):
-    try:
-        for item in conn.listPath(share, path):
-            if item.filename in ['.', '..', '']:
-                continue
-            #print(path + item.filename)
-            full_path = path + item.filename
+def _ranges_to_str(ranges):
+    #return ' '.join(ranges)
+    #DEBUG test range
+    return ranges[0]
 
-            #TODO visitor
-            es.index(index='lase_alt', doc_type='file', id=hashlib.sha1(newpath.encode('utf-8')).hexdigest(), body={'filename':item.filename, 'path':path})
-
-            if item.isDirectory:
-                smbwalk(conn, es, share, path + item.filename + '/')
-    except smb.smb_structs.OperationFailure as e:
-        #TODO logger
-        print(e)
-
-def main():
+def scan(ranges):
    # ftp = ftplib.FTP('147.175.187.131')
    # ftp.connect()
    # ftp.login()
@@ -93,29 +138,31 @@ def main():
    # level = traverse(ftp)
    # print(level)
 
-    osc = OnlineScanner()
-    #TODO to config
-    scanned = osc.scan_range('147.175.187.2-254')
-
     start = time.time()
-    es = Elasticsearch()
 
+    nm = nmap.PortScanner()
+    #osc = OnlineScanner(nm)
+    osc = OnlineScannerMock(nm)
+
+    scanned = osc.scan_range(_ranges_to_str(ranges))
+
+    cf = CrawlerFactory()
+
+    crawlers = []
     for host in scanned:
-        print(host.host_name())
-        try:
-            conn = SMBConnection('', '', 'lase', host.remote_name())
-            conn.connect(host.ip)
+        print(host.full_host_name())
+        crawlers += cf.produce(host)
 
-            smbwalk_shares(conn, es)
-        except socket.timeout:
-            #TODO logger
-            print('timeout')
-        except smb.base.NotReadyError as e:
-            #TODO logger
-            print(e)
+    print(crawlers)
+
+    try:
+        for c in crawlers:
+            c.crawl()
+    except socket.timeout:
+        #TODO logger
+        print('timeout')
+    except smb.base.NotReadyError as e:
+        #TODO logger
+        print(e)
 
     print(time.time() - start)
-
-
-if __name__ == '__main__':
-    main()
