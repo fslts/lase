@@ -8,7 +8,7 @@ import ipaddress
 import ftplib
 import smb
 from smb.SMBConnection import SMBConnection
-from elasticsearch import Elasticsearch
+import elasticsearch
 
 class ScannedHost:
     def __init__(self, ip, ports):
@@ -31,12 +31,15 @@ class OnlineScanner:
         self._nm = nmap
         self.online = []
 
+    def scan_online(self, range_):
+        nmap_res = self._nm.scan(hosts=range_, arguments='-sn')
+        hosts = [ ip for ip, data in nmap_res['scan'].items() if data['status']['state'] == 'up' ]
+        return hosts
+
     def scan_range(self, range_):
         res = []
-        nmap_res = self._nm.scan(hosts=range_, ports='445', arguments='-Pn')
+        nmap_res = self._nm.scan(hosts=range_, ports='21,139,445', arguments='-Pn')
         for ip, data in nmap_res['scan'].items():
-            print(ip)
-
             #TODO to method
             ports = [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
 
@@ -57,15 +60,21 @@ class AbstractCrawler:
     def crawl(self):
         self._crawl()
 
+    def _path_hash(self, path):
+        return hashlib.sha1(path).hexdigest()
+
 
 class SmbCrawler(AbstractCrawler):
-    def __init__(self, conn, proc):
+    def __init__(self, host, conn, proc):
+        self._host = host
         self._conn = conn
         self._proc = proc
 
+        self._schema = 'smb://'
+
     def _crawl(self):
         for share in self._shares():
-            print(share)
+            #print(share)
             self._smbwalk(share, '/')
 
     def _smbwalk(self, share, path):
@@ -74,28 +83,74 @@ class SmbCrawler(AbstractCrawler):
                 if item.filename in ['.', '..', '']:
                     continue
                 #print(path + item.filename)
-                full_path = path + item.filename
+                full_path = self._schema + self._host.full_host_name() + '/' + share + path + item.filename
 
                 #TODO visitor
                 #TODO index and doc_type to config
                 self._proc.index(index='lase_alt',
                                  doc_type='file',
                                  id=self._path_hash(full_path),
-                                 body={'filename':item.filename, 'path':path})
+                                 body={'filename':item.filename, 'path':full_path})
+                #print(full_path)
 
                 if item.isDirectory:
                     self._smbwalk(share, path + item.filename + '/')
         except smb.smb_structs.OperationFailure as e:
             #TODO logger
-            print(e)
+            pass
+            #print(e)
 
     def _shares(self):
         return (share.name
                 for share in self._conn.listShares()
                 if not share.isSpecial)
 
-    def _path_hash(self, path):
-        return hashlib.sha1(path.encode('utf-8')).hexdigest()
+
+class FtpCrawler(AbstractCrawler):
+
+    def __init__(self, host, conn, proc):
+        self._host = host
+        self._ftp = conn
+        self._proc = proc
+
+        self._schema = 'ftp://'
+
+    def _crawl(self):
+        self._ftpwalk('/')
+        
+    def _ftpwalk(self, path):
+        try:
+            for entry in self._list_path():
+                full_path = self._schema + self._host.full_host_name() + '/' + path + entry
+                self._process(self._path_hash(full_path), {'filename':entry, 'path':full_path})
+
+                self._ftp.cwd(entry)
+                self._ftpwalk(path + entry + '/')
+	        self._move_up()
+        except ftplib.error_perm:
+            pass
+        except socket.error:
+            print('socket error')
+
+    def _process(self, id_, body):
+        try:
+            self._proc.index(index='lase_alt',
+                             doc_type='file',
+                             id=id_,
+                             body=body)
+               
+        except elasticsearch.exceptions.SerializationError:
+            print(body)
+            #print('encoding...')
+            #TODO fucking encoding
+
+    def _list_path(self):
+        return (path
+                for path in self._ftp.nlst()
+                if path not in ('.', '..'))
+
+    def _move_up(self):
+        self._ftp.cwd('..')
 
 
 class CrawlerFactory():
@@ -103,26 +158,62 @@ class CrawlerFactory():
     def produce(self, host):
         crawlers = []
 
-        es = Elasticsearch()
+        es = elasticsearch.Elasticsearch()
         if self._smb_open(host):
             crawlers.append(self._produce_smb(host, es))
 
+        if self._ftp_open(host):
+            #TODO null object
+            c = self._produce_ftp(host, es)
+            if c:
+                crawlers.append(c)
+
         return crawlers
 
-    def _produce_smb(host, es):
-        conn = SMBConnection('', '', 'lase', host.host_name())
+    def _produce_smb(self, host, es):
+        conn = SMBConnection('', '', 'lase', host.host_name(), use_ntlm_v2 = True)
+        connected = False
 
         if 445 in host.ports:
-            conn.connect(host.ip, 445)
-        else:
-            conn.connect(host.ip)
-        return SmbCrawler(conn, es)
+            connected = self._smb_connect(conn, host, 445)
 
-    def _smb_open(host):
+        if not connected and 139 in host.ports:
+            connected = self._smb_connect(conn, host, 139)
+
+        return SmbCrawler(host, conn, es)
+
+    def _produce_ftp(self, host, es):
+        try:
+            ftp = ftplib.FTP(host.ip)
+      #      ftp.connect()
+            ftp.login()
+            ftp.set_pasv(True)
+            return FtpCrawler(host, ftp, es)
+        except ftplib.error_perm:
+            #TODO logger
+            print('ftp permission denied')
+            #TODO return null object
+        
+    #TODO possible feature envy
+    def _smb_open(self, host):
         return 445 in host.ports or 139 in host.ports
 
-    def _ftp_open(host):
+    def _ftp_open(self, host):
         return 21 in host.ports
+
+    #TODO possible feature envy
+    def _smb_connect(self, conn, host, port):
+        try:
+            conn.connect(host.ip, port)
+        except socket.error:
+            #TODO logger
+            print('socket error')
+            return False
+        except smb.base.NotConnectedError:
+            return False
+        return True
+
+
 
 
 #FTP
@@ -150,34 +241,32 @@ def traverse(ftp, depth=0):
 
 
 def _ranges_to_str(ranges):
-    #return ' '.join(ranges)
-    #DEBUG test range
-    return ranges[0]
+    return ' '.join(ranges)
 
 def scan(ranges):
     start = time.time()
 
     nm = nmap.PortScanner()
-    #osc = OnlineScanner(nm)
-    osc = OnlineScannerMock(nm)
+    osc = OnlineScanner(nm)
+    online_hosts = osc.scan_online(_ranges_to_str(ranges))
+    scanned = osc.scan_range(_ranges_to_str(online_hosts))
 
-    scanned = osc.scan_range(_ranges_to_str(ranges))
+    print(time.time() - start)
+    print(len(scanned))
 
     cf = CrawlerFactory()
 
-    crawlers = []
     for host in scanned:
         print(host.full_host_name())
-        crawlers += cf.produce(host)
-
-    try:
-        for c in crawlers:
-            c.crawl()
-    except socket.timeout:
-        #TODO logger
-        print('timeout')
-    except smb.base.NotReadyError as e:
-        #TODO logger
-        print(e)
-
+        try:
+            for c in cf.produce(host):
+                c.crawl()
+        except socket.timeout:
+            #TODO logger
+            print('socket timeout')
+        except smb.base.NotReadyError as e:
+            #TODO logger
+            #print(e)
+            pass
+        
     print(time.time() - start)
