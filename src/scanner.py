@@ -3,6 +3,9 @@ import time
 import math
 import hashlib
 import socket
+import multiprocessing
+
+#in python3 stdlib
 import ipaddress
 
 import ftplib
@@ -31,14 +34,9 @@ class OnlineScanner:
         self._nm = nmap
         self.online = []
 
-    def scan_online(self, range_):
-        nmap_res = self._nm.scan(hosts=range_, arguments='-sn')
-        hosts = [ ip for ip, data in nmap_res['scan'].items() if data['status']['state'] == 'up' ]
-        return hosts
-
     def scan_range(self, range_):
         res = []
-        nmap_res = self._nm.scan(hosts=range_, ports='21,139,445', arguments='-Pn')
+        nmap_res = self._nm.scan(hosts=range_, ports='21,139,445', arguments=' --max-retries 0 -Pn')
         for ip, data in nmap_res['scan'].items():
             #TODO to method
             ports = [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
@@ -116,7 +114,7 @@ class FtpCrawler(AbstractCrawler):
         self._schema = 'ftp://'
 
     def _crawl(self):
-        self._ftpwalk('/')
+        self._ftpwalk('')
         
     def _ftpwalk(self, path):
         try:
@@ -140,7 +138,8 @@ class FtpCrawler(AbstractCrawler):
                              body=body)
                
         except elasticsearch.exceptions.SerializationError:
-            print(body)
+            pass
+            #print(body)
             #print('encoding...')
             #TODO fucking encoding
 
@@ -214,59 +213,39 @@ class CrawlerFactory():
         return True
 
 
-
-
-#FTP
-# ftp = ftplib.FTP('147.175.187.131')
-# ftp.connect()
-# ftp.login()
-# ftp.set_pasv(True)
-# level = traverse(ftp)
-# print(level)
-
-def traverse(ftp, depth=0):
-
-    if depth > 10:
-        return ['depth > 10']
-    level = {}
-    for entry in (path for path in ftp.nlst() if path not in ('.', '..')):
-        try:
-            print(entry)
-            ftp.cwd(entry)
-            traverse(ftp, depth+1)
-            ftp.cwd('..')
-        except ftplib.error_perm:
-            pass
-
-
-
 def _ranges_to_str(ranges):
     return ' '.join(ranges)
+
+
+def _scan_host(host):
+    print(host.full_host_name())
+
+    cf = CrawlerFactory()
+    try:
+        for crawler in cf.produce(host):
+            crawler.crawl()
+    except socket.timeout:
+        #TODO logger
+        print('socket timeout')
+    except smb.base.NotReadyError as e:
+        #TODO logger
+        #print(e)
+        pass
 
 def scan(ranges):
     start = time.time()
 
     nm = nmap.PortScanner()
     osc = OnlineScanner(nm)
-    online_hosts = osc.scan_online(_ranges_to_str(ranges))
-    scanned = osc.scan_range(_ranges_to_str(online_hosts))
+    scanned = osc.scan_range(_ranges_to_str(ranges))
 
     print(time.time() - start)
     print(len(scanned))
 
-    cf = CrawlerFactory()
+    pool = multiprocessing.Pool(4)
+    pool.map(_scan_host, scanned)
 
-    for host in scanned:
-        print(host.full_host_name())
-        try:
-            for c in cf.produce(host):
-                c.crawl()
-        except socket.timeout:
-            #TODO logger
-            print('socket timeout')
-        except smb.base.NotReadyError as e:
-            #TODO logger
-            #print(e)
-            pass
+    #for host in scanned:
+    #    _scan_host(host)
         
     print(time.time() - start)
