@@ -4,6 +4,7 @@ import math
 import hashlib
 import socket
 import multiprocessing
+import datetime
 
 #in python3 stdlib
 import ipaddress
@@ -72,31 +73,47 @@ class SmbCrawler(AbstractCrawler):
 
     def _crawl(self):
         for share in self._shares():
-            #print(share)
-            self._smbwalk(share, '/')
+            self._smbwalk(share, None, '/')
 
-    def _smbwalk(self, share, path):
+    def _smbwalk(self, share, parent_id, path):
         try:
             for item in self._conn.listPath(share, path):
                 if item.filename in ['.', '..', '']:
                     continue
-                #print(path + item.filename)
+                print(path + item.filename)
                 full_path = self._schema + self._host.full_host_name() + '/' + share + path + item.filename
 
                 #TODO visitor
                 #TODO index and doc_type to config
+                #TODO extension filetype
+
+
+                file_type = 'dir' if item.isDirectory else 'file'
+                extension = None if item.isDirectory or '.' not in item.filename else item.filename.split('.')[-1]
+
                 self._proc.index(index='lase_alt',
                                  doc_type='file',
                                  id=self._path_hash(full_path),
-                                 body={'filename':item.filename, 'path':full_path})
+                                 body={'filename':item.filename,
+                                       'path':full_path,
+                                       'parent':parent_id,
+                                       'host':self._host.ip,
+                                       'share_type':'ftp',
+                                       'size':item.file_size,
+                                       'file_type':file_type,
+                                       'extension':extension,
+                                       'last_modified':self._last_modified_str(item.last_write_time)})
                 #print(full_path)
 
                 if item.isDirectory:
-                    self._smbwalk(share, path + item.filename + '/')
+                    self._smbwalk(share, self._path_hash(full_path), path + item.filename + '/')
         except smb.smb_structs.OperationFailure as e:
             #TODO logger
             pass
             #print(e)
+
+    def _last_modified_str(self, timestamp):
+        return datetime.datetime.fromtimestamp(timestamp).isoformat()
 
     def _shares(self):
         return (share.name
@@ -114,17 +131,19 @@ class FtpCrawler(AbstractCrawler):
         self._schema = 'ftp://'
 
     def _crawl(self):
-        self._ftpwalk('')
-        
-    def _ftpwalk(self, path):
+        self._ftpwalk(None, '')
+
+    def _ftpwalk(self, parent_id, path):
         try:
             for entry in self._list_path():
                 full_path = self._schema + self._host.full_host_name() + '/' + path + entry
-                self._process(self._path_hash(full_path), {'filename':entry, 'path':full_path})
+
+                #TODO extension filetype date modified/created
+                self._process(self._path_hash(full_path), {'filename':entry, 'path':full_path, 'parent':parent_id, 'host':self._host.ip, 'share_type':'ftp', 'size':self._ftp.size(entry)})
 
                 self._ftp.cwd(entry)
                 self._ftpwalk(path + entry + '/')
-	        self._move_up()
+                self._move_up()
         except ftplib.error_perm:
             pass
         except socket.error:
@@ -136,7 +155,6 @@ class FtpCrawler(AbstractCrawler):
                              doc_type='file',
                              id=id_,
                              body=body)
-               
         except elasticsearch.exceptions.SerializationError:
             pass
             #print(body)
@@ -192,7 +210,7 @@ class CrawlerFactory():
             #TODO logger
             print('ftp permission denied')
             #TODO return null object
-        
+
     #TODO possible feature envy
     def _smb_open(self, host):
         return 445 in host.ports or 139 in host.ports
@@ -236,16 +254,16 @@ def scan(ranges):
     start = time.time()
 
     nm = nmap.PortScanner()
-    osc = OnlineScanner(nm)
+    osc = OnlineScannerMock(nm)
     scanned = osc.scan_range(_ranges_to_str(ranges))
 
     print(time.time() - start)
     print(len(scanned))
 
-    pool = multiprocessing.Pool(4)
-    pool.map(_scan_host, scanned)
+    #pool = multiprocessing.Pool(4)
+    #pool.map(_scan_host, scanned)
 
-    #for host in scanned:
-    #    _scan_host(host)
-        
+    for host in scanned:
+        _scan_host(host)
+
     print(time.time() - start)
