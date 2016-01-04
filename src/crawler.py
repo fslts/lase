@@ -55,8 +55,8 @@ class SmbCrawler(AbstractCrawler):
             self._smbwalk(share, None, '/')
 
     def _smbwalk(self, share, parent_id, path):
-        for item in self._conn.listPath(share, path):
-            try:
+        try:
+            for item in self._conn.listPath(share, path):
                 #TODO condition to superclass
                 if item.filename in ['.', '..', '']:
                     continue
@@ -82,10 +82,10 @@ class SmbCrawler(AbstractCrawler):
                 if item.isDirectory:
                     self._smbwalk(share, lase_item.id(), path + item.filename + '/')
 
-            except smb.smb_structs.OperationFailure as e:
-                #TODO logger
-                pass
-                #print(e)
+        except smb.smb_structs.OperationFailure as e:
+            #TODO logger
+            pass
+            #print(e)
 
     def _last_modified_str(self, timestamp):
         try:
