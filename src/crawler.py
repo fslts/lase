@@ -29,6 +29,7 @@ class AbstractCrawler:
 
     def crawl(self):
         try:
+            print(self._host.full_host_name())
             self._crawl()
         except socket.timeout:
             #TODO logger
@@ -92,11 +93,22 @@ class SmbCrawler(AbstractCrawler):
             #TODO logger
             pass
             #print(e)
+        except smb.base.SMBTimeout as e:
+            #TODO logger
+            print(e)
+
 
     def _shares(self):
-        return (share.name
-                for share in self._conn.listShares()
-                if not share.isSpecial)
+        try:
+            return (share.name
+                    for share in self._conn.listShares()
+                    if not share.isSpecial)
+        except smb.base.SMBTimeout as e:
+            #TODO logger
+            print(e)
+            return None
+
+
 
 
 class FtpCrawler(AbstractCrawler):
@@ -109,11 +121,15 @@ class FtpCrawler(AbstractCrawler):
         self._schema = 'ftp://'
 
     def _crawl(self):
-        self._ftpwalk(None, '')
-
+        try:
+            self._ftpwalk(None)
+        except ftputil.error.InaccessibleLoginDirError as e:
+            #TODO logger
+            #print(e)
+            pass
 
     # TODO tail recursion?
-    def _ftpwalk(self, parent_id, path):
+    def _ftpwalk(self, parent_id):
         for root, dirs, files in self._ftp.walk('/'):
 
             parent_id = _hash_id(self._schema + self._host.full_host_name() + root)
@@ -204,6 +220,11 @@ class CrawlerFactory():
             return False
         except smb.base.NotConnectedError:
             return False
+        except smb.base.SMBTimeout as e:
+            #TODO logger
+            print(e)
+            return False
+
         return True
 
 
