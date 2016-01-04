@@ -2,7 +2,7 @@ import socket
 import datetime
 import hashlib
 
-import ftplib
+import ftputil
 import smb
 from smb.SMBConnection import SMBConnection
 
@@ -22,7 +22,7 @@ class LaseItem():
         self.last_modified = last_modified
 
     def id(self):
-        return hashlib.sha1(self.path).hexdigest()
+        return _hash_id(self.path)
 
 
 class AbstractCrawler:
@@ -40,6 +40,12 @@ class AbstractCrawler:
             #TODO logger
             #print(e)
             pass
+
+    def _last_modified_str(self, timestamp):
+        try:
+            return datetime.datetime.fromtimestamp(timestamp).isoformat()
+        except ValueError as e:
+            return datetime.datetime.fromtimestamp(0).isoformat()
 
 
 class SmbCrawler(AbstractCrawler):
@@ -87,12 +93,6 @@ class SmbCrawler(AbstractCrawler):
             pass
             #print(e)
 
-    def _last_modified_str(self, timestamp):
-        try:
-            return datetime.datetime.fromtimestamp(timestamp).isoformat()
-        except ValueError as e:
-            return datetime.datetime.fromtimestamp(0).isoformat()
-
     def _shares(self):
         return (share.name
                 for share in self._conn.listShares()
@@ -111,41 +111,44 @@ class FtpCrawler(AbstractCrawler):
     def _crawl(self):
         self._ftpwalk(None, '')
 
+
+    # TODO tail recursion?
     def _ftpwalk(self, parent_id, path):
+        for root, dirs, files in self._ftp.walk('/'):
+
+            parent_id = _hash_id(self._schema + self._host.full_host_name() + root)
+
+            for item in dirs:
+                self._process_item(root, item, 'dir', parent_id)
+            for item in files:
+                self._process_item(root, item, 'file', parent_id)
+
+    def _process_item(self, root, item, file_type, parent_id):
+        path = self._ftp.path.join(root, item)
+
         try:
-            for entry in self._list_path():
-                full_path = self._schema + self._host.full_host_name() + '/' + path + entry
+            size = self._ftp.path.getsize(path)
+            last_modified = self._ftp.path.getmtime(path)
+        except ftputil.error.PermanentError as e:
+            #TODO logger
+            #print(e)
+            return
 
-                #TODO extension filetype date modified/created
-                #self._process(self._path_hash(full_path), {'filename':entry, 'path':full_path, 'parent':parent_id, 'host':self._host.ip, 'share_type':'ftp', 'size':self._ftp.size(entry)})
+        extension = None if file_type == 'dir' or '.' not in item else item.split('.')[-1]
 
-                self._ftp.cwd(entry)
-                self._ftpwalk(path + entry + '/')
-                self._move_up()
-        except ftplib.error_perm:
-            pass
-        except socket.error:
-            print('socket error')
+        full_path = self._schema + self._host.full_host_name() + path
 
-    def _process(self, id_, body):
-        try:
-            self._proc.index(index='lase_alt',
-                             doc_type='file',
-                             id=id_,
-                             body=body)
-        except elasticsearch.exceptions.SerializationError:
-            #pass
-            print(body)
-            #print('encoding...')
-            #TODO fucking encoding
+        lase_item = LaseItem(item,
+                             full_path,
+                             parent_id,
+                             self._host.ip,
+                             'ftp',
+                             size,
+                             file_type,
+                             extension,
+                             self._last_modified_str(last_modified))
 
-    def _list_path(self):
-        return (path
-                for path in self._ftp.nlst()
-                if path not in ('.', '..'))
-
-    def _move_up(self):
-        self._ftp.cwd('..')
+        self._proc.process(lase_item)
 
 
 class CrawlerFactory():
@@ -178,15 +181,11 @@ class CrawlerFactory():
 
     def _produce_ftp(self, host, es):
         try:
-            ftp = ftplib.FTP(host.ip)
-      #      ftp.connect()
-            ftp.login()
-            ftp.set_pasv(True)
+            ftp = ftputil.FTPHost(host.ip, 'anonymous', '@anonymous')
+
             return FtpCrawler(host, ftp, es)
-        except ftplib.error_perm:
-            #TODO logger
-            print('ftp permission denied')
-            #TODO return null object
+        except ftputil.error.PermanentError as e:
+            print "Permanent Error: %s occurred" % (e)
 
     #TODO possible feature envy
     def _smb_open(self, host):
@@ -208,3 +207,5 @@ class CrawlerFactory():
         return True
 
 
+def _hash_id(path):
+    return hashlib.sha1(path).hexdigest()
