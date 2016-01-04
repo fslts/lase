@@ -1,14 +1,11 @@
 import nmap
-import time
 import math
-import multiprocessing
 import socket
 
 #in python3 stdlib
 import ipaddress
 
 import crawler
-import processor
 
 class ScannedHost:
     def __init__(self, ip, ports):
@@ -41,6 +38,8 @@ class OnlineScanner:
             if ports:
                 res.append(ScannedHost(ip, ports))
         return res
+
+
 #TODO remove after main debugging phase finishes
 class OnlineScannerMock(OnlineScanner):
     def __init__(self, nmap):
@@ -50,34 +49,8 @@ class OnlineScannerMock(OnlineScanner):
         return [ScannedHost('147.175.187.8', [445])]
 
 
-def _ranges_to_str(ranges):
-    return ' '.join(ranges)
+class OnlineScannerFactory():
 
-
-def _scan_host(host):
-
-    cf = crawler.CrawlerFactory()
-    proc = processor.LaseElasticProcessor()
-
-    print(host.full_host_name())
-    for crwl in cf.produce(host, proc):
-        crwl.crawl()
-
-
-def scan(ranges):
-    start = time.time()
-
-    nm = nmap.PortScanner()
-    osc = OnlineScannerMock(nm)
-    scanned = osc.scan_range(_ranges_to_str(ranges))
-
-    print(time.time() - start)
-    print(len(scanned))
-
-    #pool = multiprocessing.Pool(4)
-    #pool.map(_scan_host, scanned)
-
-    for host in scanned:
-        _scan_host(host)
-
-    print(time.time() - start)
+    def produce(self):
+        nm = nmap.PortScanner()
+        return OnlineScannerMock(nm)
