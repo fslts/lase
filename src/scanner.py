@@ -78,19 +78,19 @@ class SmbCrawler(AbstractCrawler):
     def _smbwalk(self, share, parent_id, path):
         try:
             for item in self._conn.listPath(share, path):
+                #TODO condition to superclass
                 if item.filename in ['.', '..', '']:
                     continue
-                print(path + item.filename)
+
+                #print(path + item.filename)
                 full_path = self._schema + self._host.full_host_name() + '/' + share + path + item.filename
 
-                #TODO visitor
-                #TODO index and doc_type to config
-                #TODO extension filetype
-
-
+                #TODO refactoring
                 file_type = 'dir' if item.isDirectory else 'file'
                 extension = None if item.isDirectory or '.' not in item.filename else item.filename.split('.')[-1]
 
+                #TODO visitor
+                #TODO index and doc_type to config
                 self._proc.index(index='lase_alt',
                                  doc_type='file',
                                  id=self._path_hash(full_path),
@@ -98,7 +98,7 @@ class SmbCrawler(AbstractCrawler):
                                        'path':full_path,
                                        'parent':parent_id,
                                        'host':self._host.ip,
-                                       'share_type':'ftp',
+                                       'share_type':'smb',
                                        'size':item.file_size,
                                        'file_type':file_type,
                                        'extension':extension,
@@ -113,7 +113,10 @@ class SmbCrawler(AbstractCrawler):
             #print(e)
 
     def _last_modified_str(self, timestamp):
-        return datetime.datetime.fromtimestamp(timestamp).isoformat()
+        try:
+            return datetime.datetime.fromtimestamp(timestamp).isoformat()
+        except ValueError as e:
+            return datetime.datetime.fromtimestamp(0).isoformat()
 
     def _shares(self):
         return (share.name
@@ -156,8 +159,8 @@ class FtpCrawler(AbstractCrawler):
                              id=id_,
                              body=body)
         except elasticsearch.exceptions.SerializationError:
-            pass
-            #print(body)
+            #pass
+            print(body)
             #print('encoding...')
             #TODO fucking encoding
 
@@ -236,15 +239,18 @@ def _ranges_to_str(ranges):
 
 
 def _scan_host(host):
-    print(host.full_host_name())
 
     cf = CrawlerFactory()
     try:
+        print(host.full_host_name())
         for crawler in cf.produce(host):
             crawler.crawl()
     except socket.timeout:
         #TODO logger
         print('socket timeout')
+    except socket.herror:
+        #TODO logger
+        print('no hostname for ip')
     except smb.base.NotReadyError as e:
         #TODO logger
         #print(e)
@@ -260,10 +266,10 @@ def scan(ranges):
     print(time.time() - start)
     print(len(scanned))
 
-    #pool = multiprocessing.Pool(4)
-    #pool.map(_scan_host, scanned)
+    pool = multiprocessing.Pool(4)
+    pool.map(_scan_host, scanned)
 
-    for host in scanned:
-        _scan_host(host)
+    #for host in scanned:
+    #    _scan_host(host)
 
     print(time.time() - start)
