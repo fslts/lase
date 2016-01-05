@@ -11,7 +11,6 @@ def _scan_host(host):
     cf = crawler.CrawlerFactory()
     proc = processor.LaseElasticImporter()
 
-    print(host.full_host_name())
     for crwl in cf.produce(host, proc):
         crwl.crawl()
 

@@ -48,6 +48,9 @@ class AbstractCrawler:
         except ValueError as e:
             return datetime.datetime.fromtimestamp(0).isoformat()
 
+    def _special_filename(self, item):
+        return item in ['.', '..', '']
+
 
 class SmbCrawler(AbstractCrawler):
     def __init__(self, host, conn, proc):
@@ -64,8 +67,7 @@ class SmbCrawler(AbstractCrawler):
     def _smbwalk(self, share, parent_id, path):
         try:
             for item in self._conn.listPath(share, path):
-                #TODO condition to superclass
-                if item.filename in ['.', '..', '']:
+                if self._special_filename(item.filename):
                     continue
 
                 full_path = self._schema + self._host.full_host_name() + '/' + share + path + item.filename
@@ -109,8 +111,6 @@ class SmbCrawler(AbstractCrawler):
             return None
 
 
-
-
 class FtpCrawler(AbstractCrawler):
 
     def __init__(self, host, conn, proc):
@@ -128,7 +128,6 @@ class FtpCrawler(AbstractCrawler):
             #print(e)
             pass
 
-    # TODO tail recursion?
     def _ftpwalk(self, parent_id):
         for root, dirs, files in self._ftp.walk('/'):
 

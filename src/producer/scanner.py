@@ -32,12 +32,14 @@ class OnlineScanner:
         res = []
         nmap_res = self._nm.scan(hosts=range_, ports='21,139,445', arguments=' --max-retries 0 -Pn')
         for ip, data in nmap_res['scan'].items():
-            #TODO to method
-            ports = [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
+            ports = self._open_ports(data)
 
             if ports:
                 res.append(ScannedHost(ip, ports))
         return res
+
+    def _open_ports(self, data):
+        [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
 
 
 #TODO remove after main debugging phase finishes
