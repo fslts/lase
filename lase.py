@@ -3,7 +3,7 @@ import time
 import multiprocessing
 
 import config
-import src.producer.producer as producer
+import src.producer as producer
 
 
 def main():
