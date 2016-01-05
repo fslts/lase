@@ -1,9 +1,11 @@
 import elasticsearch
 
+import config.elastic as conf
+
 class AbstractProcessor():
 
     def process(self, item):
-        _process(item)
+        self._process(item)
 
 
 class LaseElasticImporter(AbstractProcessor):
@@ -12,9 +14,8 @@ class LaseElasticImporter(AbstractProcessor):
         self._es = elasticsearch.Elasticsearch()
 
     def _process(self, lase_item):
-        #TODO index and doc_type to config
-        self._es.index(index='lase_alt',
-                       doc_type='file',
+        self._es.index(index=conf.INDEX,
+                       doc_type=conf.DOC_TYPE,
                        id=lase_item.id(),
                        body={'filename':lase_item.filename,
                              'path':lase_item.path,
