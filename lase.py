@@ -20,6 +20,7 @@ def lase_producer():
 
 def main():
     api.run_api()
+    #lase_producer()
 
 if __name__ == '__main__':
     main()
