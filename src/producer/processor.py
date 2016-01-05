@@ -1,11 +1,17 @@
 import elasticsearch
 
-class LaseElasticProcessor():
+class AbstractProcessor():
+
+    def process(self, item):
+        _process(item)
+
+
+class LaseElasticImporter(AbstractProcessor):
 
     def __init__(self):
         self._es = elasticsearch.Elasticsearch()
 
-    def process(self, lase_item):
+    def _process(self, lase_item):
         #TODO index and doc_type to config
         self._es.index(index='lase_alt',
                        doc_type='file',
