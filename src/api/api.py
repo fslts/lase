@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import request, jsonify
+from flask import request, jsonify, render_template
 import elasticsearch
 
 #from config import elastic as elastic
@@ -16,15 +16,29 @@ def after_request(response):
   return response
 
 
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
+
 @app.route('/search', methods=['GET'])
+def gui_search():
+    return render_template('results.html', results=search())
+
+
+@app.route('/api/search', methods=['GET'])
+def api_search():
+    return jsonify({'success':True, 'data':search()})
+
+
 def search():
     queries = []
-
     append_if_exists(get_search_query(request.args.get('query')), queries)
+    return transform_res(elastic_search(queries)) if queries else []
 
-    res = elastic_search(queries) if queries else None
 
-    return jsonify({'success':True, 'data':res})
+def transform_res(elastic_data):
+    return [ item['_source'] for item in elastic_data['hits']['hits'] ]
 
 def elastic_search(queries):
     es = elasticsearch.Elasticsearch()
@@ -39,7 +53,7 @@ def elastic_search(queries):
     }
     #res = es.search(index=elastic.INDEX, body=query)
     res = es.search(index='lase_alt', body=query)
-    return res['hits']['hits']
+    return res
 
 
 def append_if_exists(param, queries):

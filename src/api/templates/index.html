@@ -1,0 +1,9 @@
+{% extends "layout.html" %}
+{% block body %}
+
+<form action="{{ url_for('gui_search') }}" method=get class=search>
+    <input type=text size=30 name=query>
+    <input type=submit value=search>
+</form>
+
+{% endblock %}
