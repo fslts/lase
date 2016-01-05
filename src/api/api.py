@@ -20,7 +20,7 @@ def after_request(response):
 def search():
     queries = []
 
-    append_if_exists(request.args.get('query'), queries, get_search_query)
+    append_if_exists(get_search_query(request.args.get('query')), queries)
 
     res = elastic_search(queries) if queries else None
 
@@ -28,7 +28,6 @@ def search():
 
 def elastic_search(queries):
     es = elasticsearch.Elasticsearch()
-    print(queries)
     query = {
         'from' : 0,
         'size' : 20,
@@ -43,21 +42,22 @@ def elastic_search(queries):
     return res['hits']['hits']
 
 
-def append_if_exists(param, queries, query_processor):
+def append_if_exists(param, queries):
     if param:
-        queries.append(query_processor(param))
+        queries.append(param)
 
 def get_search_query(term):
-    return {
-        'simple_query_string' : {
-            #'query': '"fried eggs" +(eggplant | potato) -frittata',
-            'query': term,
-            'fields': ['filename^2', 'path'],
-            'default_operator': 'and',
-            'minimum_should_match': '100%'
+    if term:
+        return {
+            'simple_query_string' : {
+                #'query': '"fried eggs" +(eggplant | potato) -frittata',
+                'query': term,
+                'fields': ['filename^2', 'path'],
+                'default_operator': 'and',
+                'minimum_should_match': '100%'
+            }
         }
-    }
-
+    return None
 
 def run_api():
     app.run(host=app.config['API_HOST'], port=app.config['API_PORT'])
