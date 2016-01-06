@@ -13,7 +13,6 @@ app.config.from_object('config.api')
 
 
 def url_for_other_page(page):
-    print(page)
     args = request.args.copy()
     args['page'] = page
     return url_for(request.endpoint, **args)
@@ -135,7 +134,7 @@ def get_filter(field_name, filter_value):
     return None
 
 def get_host_filter(host):
-    get_filter('host', normalize_host(host))
+    return get_filter('host', normalize_host(host))
 
 def normalize_host(host):
     if re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host):
