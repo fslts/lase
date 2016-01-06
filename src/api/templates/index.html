@@ -2,8 +2,37 @@
 {% block body %}
 
 <form action="{{ url_for('gui_search') }}" method=get class=search>
-    <input type=text size=30 name=query>
-    <input type=submit value=search>
+    <div>
+        <input type=text size=30 name=query>
+        <input type=submit value=search>
+    </div>
+
+    <div style="margin-top:30px">
+
+        <h3>advanced:</h3>
+        <div style="margin-top:10px">host</div>
+        <div><input type=text size=20 name=host></div>
+        <div style="margin-top:20px">content type</div>
+        <div>
+            <input type="radio" name="content_type" value="all" checked="true">all
+            <input type="radio" name="content_type" value="video">video
+            <input type="radio" name="content_type" value="music">music
+            <input type="radio" name="content_type" value="document">document
+            <input type="radio" name="content_type" value="app">application
+            <input type="radio" name="content_type" value="iso">iso
+            <input type="radio" name="content_type" value="img">img
+        </div>
+        <div style="margin-top:20px">file type</div>
+        <div>
+            <input type="radio" name="file_type" value="all" checked="true">all
+            <input type="radio" name="file_type" value="dir">directory
+            <input type="radio" name="file_type" value="file">file
+        </div>
+        <div style="margin-top:20px">size from (MB)</div>
+        <div><input type=text size=10 name=size_from></div>
+        <div style="margin-top:10px">size to (MB)<div>
+        <div><input type=text size=10 name=size_to></div>
+    </div>
 </form>
 
 {% endblock %}

@@ -39,7 +39,7 @@ def search():
     append_if_exists(get_filter('host', request.args.get('host')), filters)
     append_if_exists(get_filter('file_type', request.args.get('file_type')), filters)
     append_if_exists(get_content_type_filter(request.args.get('content_type')), filters)
-    append_if_exists(get_range_filter(
+    append_if_exists(get_size_range_filter(
                         'size',
                         from_value=request.args.get('size_from'),
                         to_value=request.args.get('size_to')
@@ -69,6 +69,7 @@ def elastic_search(query_str, filters = None):
                 'must': filters
             }
         }
+    print(query_body)
 
     return es.search(index=elastic.INDEX, body=query_body)
 
@@ -100,26 +101,42 @@ def get_search_query(term):
     return None
 
 def get_filter(field_name, filter_value):
-    if field_name and filter_value:
+    if field_name and filter_value and filter_value != 'all':
         return { 'term': { field_name: filter_value } }
     return None
 
 def get_list_filter(field_name, filter_value):
-    if field_name and filter_value:
+    if field_name and filter_value and filter_value != 'all':
         return { 'terms': { field_name: filter_value } }
     return None
 
+def get_size_range_filter(field_name, from_value=None, to_value=None):
+    from_mb = None
+    to_mb = None
+
+    if from_value:
+        from_mb = int(from_value) * 1024 * 1024
+    if to_value:
+        to_mb = int(from_value) * 1024 * 1024
+
+    return get_range_filter(field_name, from_mb, to_mb)
+
 def get_range_filter(field_name, from_value=None, to_value=None):
-    if field_name and (from_value or to_value):
-        return {
-            'range': {
-                field_name: {
-                    'gte': from_value,
-                    'lte': to_value,
-                }
-            }
+    if not field_name or (from_value is None and to_value is None):
+        return None
+
+    res = {
+        'range': {
+            field_name: {}
         }
-    return None
+    }
+
+    if from_value:
+        res['range'][field_name]['gte'] = from_value
+    if to_value:
+        res['range'][field_name]['gte'] = to_value
+
+    return res
 
 def get_content_type_filter(content_type):
     if content_type == 'video':
