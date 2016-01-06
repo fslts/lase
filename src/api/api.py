@@ -5,6 +5,7 @@ from flask import Flask
 from flask import request, jsonify, render_template, url_for
 import elasticsearch
 
+from src.utils.cache import LaseRedisCache
 from pagination import Pagination
 from config import elastic as elastic
 
@@ -76,8 +77,17 @@ def null_result():
 def transform_res(elastic_data):
     return {
         'total': elastic_data['hits']['total'],
-        'items': [ item['_source'] for item in elastic_data['hits']['hits'] ]
+        'items': transform_hits(elastic_data['hits']['hits'])
     }
+
+def transform_hits(hits):
+    res = []
+    cache = LaseRedisCache()
+    for item in hits:
+        final_item = item['_source']
+        final_item['online'] = len(cache.load_host(final_item['host'])) > 0
+        res.append(final_item)
+    return res
 
 def elastic_search(query_str, page, filters = None):
     es = elasticsearch.Elasticsearch()
@@ -137,6 +147,8 @@ def get_host_filter(host):
     return get_filter('host', normalize_host(host))
 
 def normalize_host(host):
+    if not host:
+        return None
     if re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host):
         return host
     elif host.endswith('.ynet.sk'):

@@ -6,7 +6,7 @@ def _ranges_to_str(ranges):
     return ' '.join(ranges)
 
 
-def _scan_host(host):
+def _cawl_host(host):
 
     cf = crawler.CrawlerFactory()
     proc = processor.LaseElasticImporter()
@@ -14,7 +14,7 @@ def _scan_host(host):
     for crwl in cf.produce(host, proc):
         crwl.crawl()
 
-def scan(ranges):
+def crawl(ranges):
 
     osf = scanner.OnlineScannerFactory()
     osc = osf.produce()
@@ -24,8 +24,15 @@ def scan(ranges):
     print(len(scanned))
 
     #pool = multiprocessing.Pool(4)
-    #pool.map(_scan_host, scanned)
+    #pool.map(_crawl_host, scanned)
 
     for host in scanned:
-        _scan_host(host)
+        _crawl_host(host)
 
+def scan(ranges):
+    osf = scanner.OnlineScannerFactory()
+    osc = osf.produce()
+
+    scanned = osc.scan_range(_ranges_to_str(ranges))
+
+    print(len(scanned))
