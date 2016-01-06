@@ -37,6 +37,8 @@ def search():
 
     filters = []
     append_if_exists(get_filter('host', request.args.get('host')), filters)
+    append_if_exists(get_filter('file_type', request.args.get('file_type')), filters)
+    append_if_exists(get_content_type_filter(request.args.get('content_type')), filters)
 
     return transform_res(elastic_search(query, filters)) if query else None
 
@@ -94,8 +96,24 @@ def get_search_query(term):
 
 def get_filter(field_name, filter_value):
     if field_name and filter_value:
-        return { "term": { field_name: filter_value } }
+        return { 'term': { field_name: filter_value } }
     return None
+
+def get_content_type_filter(content_type):
+    if content_type == 'video':
+        return { 'terms': { 'extension': ['avi', 'wmv', 'mp4', 'mkv', 'flv', 'mov', 'mpg', 'rm', 'vob'] } }
+    elif content_type == 'music':
+        return { 'terms': { 'extension': ['mp3', 'wma', 'flac', 'ogg', 'wav', 'm4a', 'aac' ]} }
+    elif content_type == 'document':
+        return { 'terms': { 'extension': ['doc', 'docx', 'odt', 'txt', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx' ]} }
+    elif content_type == 'app':
+        return { 'terms': { 'extension': ['exe', 'jar' ]} }
+    elif content_type == 'iso':
+        return { 'term': { 'extension': 'iso'} }
+    elif content_type == 'img':
+        return { 'term': { 'extension': ['jpg', 'png', 'jpeg', 'psd', 'gif', 'tiff'] } }
+    return None
+
 
 def run_api():
     app.run(host=app.config['API_HOST'], port=app.config['API_PORT'])
