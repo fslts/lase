@@ -73,12 +73,21 @@ def append_if_exists(param, queries):
 def get_search_query(term):
     if term:
         return {
-            'simple_query_string' : {
-                #'query': '"fried eggs" +(eggplant | potato) -frittata',
-                'query': term,
-                'fields': ['filename^2', 'path'],
-                'default_operator': 'and',
-                'minimum_should_match': '100%'
+            'bool': {
+                'should': [
+                    {'multi_match' : {
+                        'query': term,
+                        'fields': ['filename^2', 'path'],
+                        'operator': 'and',
+                    }},
+                    {'multi_match' : {
+                        'query': term,
+                        'fields': ['filename^2', 'path'],
+                        'operator': 'and',
+                        'fuzziness': 'AUTO',
+                        'boost':0.2
+                    }}
+                ]
             }
         }
     return None
