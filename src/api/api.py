@@ -2,13 +2,23 @@ import socket
 import re
 
 from flask import Flask
-from flask import request, jsonify, render_template
+from flask import request, jsonify, render_template, url_for
 import elasticsearch
 
+from pagination import Pagination
 from config import elastic as elastic
 
 app = Flask(__name__)
 app.config.from_object('config.api')
+
+
+def url_for_other_page(page):
+    print(page)
+    args = request.args.copy()
+    args['page'] = page
+    return url_for(request.endpoint, **args)
+app.jinja_env.globals['url_for_other_page'] = url_for_other_page
+
 
 #CORS
 @app.after_request
@@ -27,7 +37,17 @@ def index():
 
 @app.route('/search', methods=['GET'])
 def gui_search():
-    return render_template('results.html', results=search())
+    res = search()
+
+    page = int(request.args.get('page')) if request.args.get('page') else 1
+
+
+    #TODO size param
+    pagination = Pagination(page, 100, res['total'])
+    return render_template('results.html',
+        results=res,
+        pagination=pagination
+    )
 
 
 @app.route('/api/search', methods=['GET'])
@@ -48,18 +68,25 @@ def search():
                         to_value=request.args.get('size_to')
                     ),filters)
 
-    return transform_res(elastic_search(query, filters)) if query else []
+    page = int(request.args.get('page')) if request.args.get('page') else 1
+    return transform_res(elastic_search(query, page, filters)) if query else null_result()
 
+def null_result():
+    return { 'total':0, 'items':[] }
 
 def transform_res(elastic_data):
-    return [ item['_source'] for item in elastic_data['hits']['hits'] ]
+    return {
+        'total': elastic_data['hits']['total'],
+        'items': [ item['_source'] for item in elastic_data['hits']['hits'] ]
+    }
 
-def elastic_search(query_str, filters = None):
+def elastic_search(query_str, page, filters = None):
     es = elasticsearch.Elasticsearch()
 
     query_body = {}
-    query_body['from'] = 0
-    query_body['size'] = 20
+    #TODO size param
+    query_body['from'] = (page - 1) * 100
+    query_body['size'] = 100
 
     query_body['query'] = {}
     query_body['query']['filtered'] = {
@@ -72,7 +99,6 @@ def elastic_search(query_str, filters = None):
                 'must': filters
             }
         }
-    print(query_body)
 
     return es.search(index=elastic.INDEX, body=query_body)
 
@@ -109,7 +135,6 @@ def get_filter(field_name, filter_value):
     return None
 
 def get_host_filter(host):
-    print(normalize_host(host))
     get_filter('host', normalize_host(host))
 
 def normalize_host(host):
