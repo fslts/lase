@@ -2,7 +2,7 @@ from flask import Flask
 from flask import request, jsonify, render_template
 import elasticsearch
 
-#from config import elastic as elastic
+from config import elastic as elastic
 
 app = Flask(__name__)
 app.config.from_object('config.api')
@@ -11,7 +11,8 @@ app.config.from_object('config.api')
 @app.after_request
 def after_request(response):
   response.headers.add('Access-Control-Allow-Origin', '*')
-  response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  response.headers.add('Access-Control-Allow-Headers',
+                       'Content-Type,Authorization')
   response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
   return response
 
@@ -32,28 +33,37 @@ def api_search():
 
 
 def search():
-    queries = []
-    append_if_exists(get_search_query(request.args.get('query')), queries)
-    return transform_res(elastic_search(queries)) if queries else []
+    query = get_search_query(request.args.get('query'))
+
+    filters = []
+    append_if_exists(get_filter('host', request.args.get('host')), filters)
+
+    return transform_res(elastic_search(query, filters)) if query else None
 
 
 def transform_res(elastic_data):
     return [ item['_source'] for item in elastic_data['hits']['hits'] ]
 
-def elastic_search(queries):
+def elastic_search(query_str, filters = None):
     es = elasticsearch.Elasticsearch()
-    query = {
-        'from' : 0,
-        'size' : 20,
-        'query' : {
+
+    query_body = {}
+    query_body['from'] = 0
+    query_body['size'] = 20
+
+    query_body['query'] = {}
+    query_body['query']['filtered'] = {
+        'query': query_str
+    }
+
+    if filters:
+        query_body['query']['filtered']['filter'] = {
             'bool': {
-                'must': queries
+                'must': filters
             }
         }
-    }
-    #res = es.search(index=elastic.INDEX, body=query)
-    res = es.search(index='lase_alt', body=query)
-    return res
+
+    return es.search(index=elastic.INDEX, body=query_body)
 
 
 def append_if_exists(param, queries):
@@ -71,6 +81,11 @@ def get_search_query(term):
                 'minimum_should_match': '100%'
             }
         }
+    return None
+
+def get_filter(field_name, filter_value):
+    if field_name and filter_value:
+        return { "term": { field_name: filter_value } }
     return None
 
 def run_api():
