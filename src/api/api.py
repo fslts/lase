@@ -39,6 +39,11 @@ def search():
     append_if_exists(get_filter('host', request.args.get('host')), filters)
     append_if_exists(get_filter('file_type', request.args.get('file_type')), filters)
     append_if_exists(get_content_type_filter(request.args.get('content_type')), filters)
+    append_if_exists(get_range_filter(
+                        'size',
+                        from_value=request.args.get('size_from'),
+                        to_value=request.args.get('size_to')
+                    ),filters)
 
     return transform_res(elastic_search(query, filters)) if query else None
 
@@ -99,19 +104,36 @@ def get_filter(field_name, filter_value):
         return { 'term': { field_name: filter_value } }
     return None
 
+def get_list_filter(field_name, filter_value):
+    if field_name and filter_value:
+        return { 'terms': { field_name: filter_value } }
+    return None
+
+def get_range_filter(field_name, from_value=None, to_value=None):
+    if field_name and (from_value or to_value):
+        return {
+            'range': {
+                field_name: {
+                    'gte': from_value,
+                    'lte': to_value,
+                }
+            }
+        }
+    return None
+
 def get_content_type_filter(content_type):
     if content_type == 'video':
-        return { 'terms': { 'extension': ['avi', 'wmv', 'mp4', 'mkv', 'flv', 'mov', 'mpg', 'rm', 'vob'] } }
+        return get_list_filter('extension', ['avi', 'wmv', 'mp4', 'mkv', 'flv', 'mov', 'mpg', 'rm', 'vob'])
     elif content_type == 'music':
-        return { 'terms': { 'extension': ['mp3', 'wma', 'flac', 'ogg', 'wav', 'm4a', 'aac' ]} }
+        return get_list_filter('extension', ['mp3', 'wma', 'flac', 'ogg', 'wav', 'm4a', 'aac' ])
     elif content_type == 'document':
-        return { 'terms': { 'extension': ['doc', 'docx', 'odt', 'txt', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx' ]} }
+        return get_list_filter('extension', ['doc', 'docx', 'odt', 'txt', 'pdf', 'ppt', 'pptx', 'xls', 'xlsx' ])
     elif content_type == 'app':
-        return { 'terms': { 'extension': ['exe', 'jar' ]} }
+        return get_list_filter('extension', ['exe', 'jar' ])
     elif content_type == 'iso':
-        return { 'term': { 'extension': 'iso'} }
+        return get_filter('extension', 'iso')
     elif content_type == 'img':
-        return { 'term': { 'extension': ['jpg', 'png', 'jpeg', 'psd', 'gif', 'tiff'] } }
+        return get_list_filter('extension', ['jpg', 'png', 'jpeg', 'psd', 'gif', 'tiff'])
     return None
 
 
