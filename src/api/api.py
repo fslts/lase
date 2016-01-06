@@ -1,3 +1,6 @@
+import socket
+import re
+
 from flask import Flask
 from flask import request, jsonify, render_template
 import elasticsearch
@@ -36,7 +39,7 @@ def search():
     query = get_search_query(request.args.get('query'))
 
     filters = []
-    append_if_exists(get_filter('host', request.args.get('host')), filters)
+    append_if_exists(get_host_filter(request.args.get('host')), filters)
     append_if_exists(get_filter('file_type', request.args.get('file_type')), filters)
     append_if_exists(get_content_type_filter(request.args.get('content_type')), filters)
     append_if_exists(get_size_range_filter(
@@ -45,7 +48,7 @@ def search():
                         to_value=request.args.get('size_to')
                     ),filters)
 
-    return transform_res(elastic_search(query, filters)) if query else None
+    return transform_res(elastic_search(query, filters)) if query else []
 
 
 def transform_res(elastic_data):
@@ -104,6 +107,25 @@ def get_filter(field_name, filter_value):
     if field_name and filter_value and filter_value != 'all':
         return { 'term': { field_name: filter_value } }
     return None
+
+def get_host_filter(host):
+    print(normalize_host(host))
+    get_filter('host', normalize_host(host))
+
+def normalize_host(host):
+    if re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host):
+        return host
+    elif host.endswith('.ynet.sk'):
+        try:
+            return socket.gethostbyname(host)
+        except socket.gaierror:
+            return None
+    else:
+        try:
+            return socket.gethostbyname(host + '.ynet.sk')
+        except socket.gaierror:
+            return None
+
 
 def get_list_filter(field_name, filter_value):
     if field_name and filter_value and filter_value != 'all':
