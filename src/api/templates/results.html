@@ -4,7 +4,7 @@
 <h2>results</h2>
 <table id="results">
     {% for result in results['items'] %}
-    <tr><td>{{ result.path }}</td></tr>
+    <tr><td>{{ result.path }}</td><td>{% if result.online %}online{% else %}offline{% endif %}</td></tr>
     {% else %}
     <tr><td>no results</td></tr>
     {% endfor %}
