@@ -200,7 +200,12 @@ class CrawlerFactory():
 
             return FtpCrawler(host, ftp, es)
         except ftputil.error.PermanentError as e:
+            #TODO logger
             print "Permanent Error: %s occurred" % (e)
+        except ftputil.error.FTPOSError as e:
+            #TODO logger
+            print(e)
+
 
     #TODO possible feature envy
     def _smb_open(self, host):
