@@ -8,15 +8,19 @@ import src.api as api
 
 
 def main(argv):
+    if not argv:
+        print('please choose one of the options')
+        print('lase.py [-s | -c | -a | --scan | --crawl | --api]')
+
     try:
-        opts, args = getopt.getopt(argv,"sca",["scan","crawl","api"])
+        opts, args = getopt.getopt(argv,"hsca",["scan","crawl","api"])
     except getopt.GetoptError:
-        print('bad options')
-        print 'lase.py [-s | -c | -a | --scan | --crawl | --api]'
+        print('lase.py [-s | -c | -a | --scan | --crawl | --api]')
         sys.exit(2)
+
     for opt, arg in opts:
         if opt == '-h':
-            print 'lase.py [-s | -c | -a | --scan | --crawl | --api]'
+            print('lase.py [-s | -c | -a | --scan | --crawl | --api]')
         elif opt in ("-a", "--api"):
             api.run_api()
         elif opt in ("-c", "--crawl"):
