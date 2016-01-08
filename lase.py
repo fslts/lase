@@ -1,10 +1,13 @@
 import sys
-import time
 import getopt
+import logging
 
 import config
 import src.producer as producer
 import src.api as api
+
+
+logger = logging.getLogger(__name__)
 
 
 def main(argv):
@@ -24,12 +27,15 @@ def main(argv):
         elif opt in ("-a", "--api"):
             api.run_api()
         elif opt in ("-c", "--crawl"):
-            producer.crawl(config.ranges)
+            producer.crawl_seq(config.ranges)
         elif opt in ("-s", "--scan"):
             producer.online_scan(config.ranges)
 
 if __name__ == '__main__':
+    # init mainly because of python 2
     reload(sys)
     sys.setdefaultencoding("utf-8")
+
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     main(sys.argv[1:])

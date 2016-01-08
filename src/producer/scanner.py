@@ -46,15 +46,6 @@ class OnlineScanner:
         return [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
 
 
-#TODO remove after main debugging phase finishes
-class OnlineScannerMock(OnlineScanner):
-    def __init__(self, nmap):
-        self._nm = nmap
-
-    def scan_range(self, range_):
-        return [ScannedHost('147.175.187.8', [445])]
-
-
 class OnlineScannerFactory():
 
     def produce(self):

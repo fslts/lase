@@ -1,10 +1,14 @@
 import socket
 import datetime
 import hashlib
+import logging
 
 import ftputil
 import smb
 from smb.SMBConnection import SMBConnection
+
+
+logger = logging.getLogger(__name__)
 
 
 class LaseItem():
@@ -29,18 +33,14 @@ class AbstractCrawler:
 
     def crawl(self):
         try:
-            print(self._host.full_host_name())
+            logger.info('starting to crawl host %s', (self._host.full_host_name(),))
             self._crawl()
         except socket.timeout:
-            #TODO logger
-            print('socket timeout')
+            logger.info('socket timeout')
         except socket.herror:
-            #TODO logger
-            print('no hostname for ip')
+            logger.info('no hostname for ip')
         except smb.base.NotReadyError as e:
-            #TODO logger
-            #print(e)
-            pass
+            logger.info('SMB connection is not ready (i.e. not authenticated or authentication failed)')
 
     def _last_modified_str(self, timestamp):
         try:
@@ -92,12 +92,11 @@ class SmbCrawler(AbstractCrawler):
                     self._smbwalk(share, lase_item.id(), path + item.filename + '/')
 
         except smb.smb_structs.OperationFailure as e:
-            #TODO logger
-            pass
-            #print(e)
-        except smb.base.SMBTimeout as e:
-            #TODO logger
-            print(e)
+            logger.info('SMB operation failure for host %s: %s' % (self._host, e,))
+        except smb.base.SMBTimeout:
+            logger.info('SMB timeout for host: %s' % (self._host,))
+        except smb.base.NotConnectedError:
+            logger.info('SMB not connected error for host: %s' % (self._host,))
 
 
     def _shares(self):
@@ -106,8 +105,7 @@ class SmbCrawler(AbstractCrawler):
                     for share in self._conn.listShares()
                     if not share.isSpecial)
         except smb.base.SMBTimeout as e:
-            #TODO logger
-            print(e)
+            logger.info('SMB timeout for host: %s' % (self._host,))
             return None
 
 
@@ -124,9 +122,7 @@ class FtpCrawler(AbstractCrawler):
         try:
             self._ftpwalk(None)
         except ftputil.error.InaccessibleLoginDirError as e:
-            #TODO logger
-            #print(e)
-            pass
+            logger.info('FTP inaccessible login dir for host: %s' % (self._host,))
 
     def _ftpwalk(self, parent_id):
         for root, dirs, files in self._ftp.walk('/'):
@@ -141,13 +137,13 @@ class FtpCrawler(AbstractCrawler):
     def _process_item(self, root, item, file_type, parent_id):
         path = self._ftp.path.join(root, item)
 
+        size = 0
+        last_modified = 0
         try:
             size = self._ftp.path.getsize(path)
             last_modified = self._ftp.path.getmtime(path)
         except ftputil.error.PermanentError as e:
-            #TODO logger
-            #print(e)
-            return
+            logger.info('FTP permanent error for host: %s' % (self._host,))
 
         extension = None if file_type == 'dir' or '.' not in item else item.split('.')[-1]
 
@@ -200,11 +196,9 @@ class CrawlerFactory():
 
             return FtpCrawler(host, ftp, es)
         except ftputil.error.PermanentError as e:
-            #TODO logger
-            print "Permanent Error: %s occurred" % (e)
+            logger.info('FTP permanent error for host: %s' % (host,))
         except ftputil.error.FTPOSError as e:
-            #TODO logger
-            print(e)
+            logger.info('FTP OS error for host: %s' % (host,))
 
 
     #TODO possible feature envy
@@ -219,14 +213,13 @@ class CrawlerFactory():
         try:
             conn.connect(host.ip, port)
         except socket.error:
-            #TODO logger
-            print('socket error')
+            logger.info('socket error for host: %s' % (host,))
             return False
         except smb.base.NotConnectedError:
+            logger.info('SMB not connected error for host: %s' % (host,))
             return False
         except smb.base.SMBTimeout as e:
-            #TODO logger
-            print(e)
+            logger.info('SMB timeout for host: %s' % (host,))
             return False
 
         return True
