@@ -192,7 +192,7 @@ def get_range_filter(field_name, from_value=None, to_value=None):
     if from_value:
         res['range'][field_name]['gte'] = from_value
     if to_value:
-        res['range'][field_name]['gte'] = to_value
+        res['range'][field_name]['lte'] = to_value
 
     return res
 

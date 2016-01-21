@@ -45,9 +45,9 @@ def _ranges_to_str(ranges):
 def _scan_host(host):
 
     cf = crawler.CrawlerFactory()
-    proc = processor.LaseElasticImporter()
+    proc = processor.LaseElasticImporter(host)
 
     for crwl in cf.produce(host, proc):
         crwl.crawl()
 
-
+    proc.cleanup()
