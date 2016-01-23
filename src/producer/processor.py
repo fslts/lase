@@ -1,10 +1,13 @@
 import time
 import math
+import logging
 
 import elasticsearch
 from elasticsearch import helpers
 
 import config.elastic as conf
+
+logger = logging.getLogger(__name__)
 
 class AbstractProcessor():
 
@@ -35,21 +38,43 @@ class LaseElasticImporter(AbstractProcessor):
                              'crawled':self._crawled})
 
     def cleanup(self):
+        """ Method used to delete files that are no longer found in crawled
+        host"""
+
         query = {
             'query': {
-                'range' : {
-                    'crawled' : {
-                        'lt' : self._crawled,
+                'filtered': {
+                    'filter': {
+                        'bool': {
+                            'must': [
+                                {'range' : {
+                                    'crawled' : {
+                                        'lt' : self._crawled,
+                                    }
+                                }},
+                                {'term': {
+                                    'host': self._host.ip
+                                }}
+                            ]
+                        }
                     }
                 }
             }
         }
 
-        to_delete = helpers.scan(self._es,
-                        query=query,
-                        index=conf.INDEX,
-                        doc_type=conf.DOC_TYPE)
+        # Elastic probably need to flush some changes, so we need to wait
+        # a little. When there was no sleep records with correct time was
+        # deleted
+        time.sleep(1)
 
+        to_delete = helpers.scan(self._es,
+                                 query=query,
+                                 index=conf.INDEX,
+                                 doc_type=conf.DOC_TYPE)
+
+        deleted = 0
         for item in to_delete:
-            print(item)
-        #   self._es.delete(index=conf.INDEX, doc_type=conf.DOC_TYPE, id=item['_id'])
+            self._es.delete(index=conf.INDEX, doc_type=conf.DOC_TYPE, id=item['_id'])
+            deleted += 1
+
+        logger.info('deleted %s items for host %s' % (deleted, self._host.ip))
