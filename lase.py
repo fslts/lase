@@ -6,12 +6,11 @@ import config
 import src.producer as producer
 import src.api as api
 
-
 logger = logging.getLogger(__name__)
 
 
 def help():
-    print('lase.py [-s | -c | -a | --scan | --crawl | --api | --crawl-host [host] | --scan-host [host] ]')
+    print('lase.py [-s | -c | --scan | --crawl | --api | --crawl-host [host] | --scan-host [host] ]')
 
 
 def main(argv):
@@ -20,7 +19,7 @@ def main(argv):
         help()
 
     try:
-        opts, args = getopt.getopt(argv, 'hsca', ['help', 'scan', 'crawl', 'crawl-host=', 'api'])
+        opts, args = getopt.getopt(argv, 'hsc', ['help', 'scan', 'crawl', 'crawl-host=', 'api'])
     except getopt.GetoptError:
         help()
         sys.exit(2)
@@ -28,7 +27,7 @@ def main(argv):
     for opt, arg in opts:
         if opt == '-h':
             help()
-        elif opt in ('-a', '--api'):
+        elif opt == '--api':
             api.run_api()
         elif opt in ('-c', '--crawl'):
             producer.crawl_seq(config.ranges)
