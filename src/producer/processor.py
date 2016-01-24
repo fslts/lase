@@ -22,6 +22,15 @@ class LaseElasticImporter(AbstractProcessor):
         self._crawled = math.floor(time.time())
         self._host = host
 
+        self._create_index()
+
+    def _create_index(self):
+        if not self._es.indices.exists(conf.INDEX):
+            self._es.indices.create(conf.INDEX,
+                                    body={'settings':conf.SETTINGS,
+                                          'mappings':conf.MAPPING_V2})
+
+
     def _process(self, lase_item):
         self._es.index(index=conf.INDEX,
                        doc_type=conf.DOC_TYPE,
