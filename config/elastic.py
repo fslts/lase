@@ -4,11 +4,11 @@ DOC_TYPE = 'file'
 SETTINGS =  {
     'analysis' : {
         'analyzer' : {
-            'filename_search' : {
+            'filename_words' : {
                'tokenizer' : 'filename',
                'filter' : ['asciifolding','lowercase']
             },
-            'filename_index' : {
+            'filename_ngram' : {
                'tokenizer' : 'filename',
                'filter' : ['asciifolding','lowercase','edge_ngram']
             }
@@ -35,14 +35,24 @@ MAPPING_V2 = {
     'file' : {
         'properties' : {
             'filename' : {
-                'type' : 'string',
-                'analyzer' : 'filename_index',
-                'search_analyzer' : 'filename_search'
+                'type': 'multi_field',
+                'fields': {
+                    'partial': {
+                        'type' : 'string',
+                        'analyzer' : 'filename_ngram',
+                        'search_analyzer' : 'filename_words'
+                    },
+                    'full': {
+                        'type' : 'string',
+                        'analyzer' : 'filename_words',
+                    },
+                }
             },
+
             'path': {
                 'type': 'string',
-                'analyzer' : 'filename_index',
-                'search_analyzer' : 'filename_search'
+                'analyzer' : 'filename_ngram',
+                'search_analyzer' : 'filename_words'
             },
             'parent': {
                 'type': 'string',
@@ -83,14 +93,23 @@ MAPPING_V1 = {
     'file' : {
         'properties' : {
             'filename' : {
-                'type' : 'string',
-                'index_analyzer' : 'filename_index',
-                'search_analyzer' : 'filename_search'
+                'type': 'multi_field',
+                'fields': {
+                    'partial': {
+                        'type' : 'string',
+                        'index_analyzer' : 'filename_ngram',
+                        'search_analyzer' : 'filename_words'
+                    },
+                    'full': {
+                        'type' : 'string',
+                        'analyzer' : 'filename_words'
+                    },
+                }
             },
             'path': {
                 'type': 'string',
-                'index_analyzer' : 'filename_index',
-                'search_analyzer' : 'filename_search'
+                'index_analyzer' : 'filename_ngram',
+                'search_analyzer' : 'filename_words'
             },
             'parent': {
                 'type': 'string',
