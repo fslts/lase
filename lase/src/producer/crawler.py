@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class LaseItem():
 
-    def __init__(self, filename, path, parent, host,
-                 share_type, size, file_type, extension, last_modified):
+    def __init__(self, filename, path, parent, host, share_type,
+                 size, file_type, extension, last_modified):
         self.filename = filename
         self.path = path
         self.parent = parent
@@ -33,14 +33,16 @@ class AbstractCrawler:
 
     def crawl(self):
         try:
-            logger.info('starting to crawl host %s', (self._host.full_host_name(),))
+            logger.info('starting to crawl host %s',
+                        (self._host.full_host_name(),))
             self._crawl()
         except socket.timeout:
             logger.info('socket timeout')
         except socket.herror:
             logger.info('no hostname for ip')
         except smb.base.NotReadyError as e:
-            logger.info('SMB connection is not ready (i.e. not authenticated or authentication failed)')
+            logger.info('SMB connection is not ready (i.e. not authenticated '
+                        'or authentication failed)')
 
     def _last_modified_str(self, timestamp):
         try:
@@ -70,11 +72,13 @@ class SmbCrawler(AbstractCrawler):
                 if self._special_filename(item.filename):
                     continue
 
-                full_path = self._schema + self._host.full_host_name() + '/' + share + path + item.filename
+                full_path = (self._schema + self._host.full_host_name() +
+                             '/' + share + path + item.filename)
 
                 #TODO refactoring
                 file_type = 'dir' if item.isDirectory else 'file'
-                extension = None if item.isDirectory or '.' not in item.filename else item.filename.split('.')[-1]
+                extension = None if item.isDirectory or '.' not in item.filename
+                                 else item.filename.split('.')[-1]
 
                 lase_item = LaseItem(item.filename,
                                      full_path,
@@ -89,14 +93,18 @@ class SmbCrawler(AbstractCrawler):
                 self._proc.process(lase_item)
 
                 if item.isDirectory:
-                    self._smbwalk(share, lase_item.id(), path + item.filename + '/')
+                    self._smbwalk(share, lase_item.id(),
+                                  path + item.filename + '/')
 
         except smb.smb_structs.OperationFailure as e:
-            logger.info('SMB operation failure for host %s: %s' % (self._host, e,))
+            logger.info('SMB operation failure for host %s: %s',
+                        (self._host, e,))
         except smb.base.SMBTimeout:
-            logger.info('SMB timeout for host: %s' % (self._host,))
+            logger.info('SMB timeout for host: %s',
+                        (self._host,))
         except smb.base.NotConnectedError:
-            logger.info('SMB not connected error for host: %s' % (self._host,))
+            logger.info('SMB not connected error for host: %s',
+                        (self._host,))
 
 
     def _shares(self):
@@ -122,7 +130,8 @@ class FtpCrawler(AbstractCrawler):
         try:
             self._ftpwalk(None)
         except ftputil.error.InaccessibleLoginDirError as e:
-            logger.info('FTP inaccessible login dir for host: %s' % (self._host,))
+            logger.info('FTP inaccessible login dir for host: %s',
+                        (self._host,))
 
     def _ftpwalk(self, parent_id):
         for root, dirs, files in self._ftp.walk('/'):
@@ -145,7 +154,8 @@ class FtpCrawler(AbstractCrawler):
         except ftputil.error.PermanentError as e:
             logger.info('FTP permanent error for host: %s' % (self._host,))
 
-        extension = None if file_type == 'dir' or '.' not in item else item.split('.')[-1]
+        extension = None if file_type == 'dir' or '.' not in item
+                         else item.split('.')[-1]
 
         full_path = self._schema + self._host.full_host_name() + path
 
@@ -179,7 +189,8 @@ class CrawlerFactory():
         return crawlers
 
     def _produce_smb(self, host, es):
-        conn = SMBConnection('', '', 'lase', host.host_name(), use_ntlm_v2 = True)
+        conn = SMBConnection('', '', 'lase', host.host_name(),
+                             use_ntlm_v2 = True)
         connected = False
 
         if 445 in host.ports:
@@ -193,12 +204,11 @@ class CrawlerFactory():
     def _produce_ftp(self, host, es):
         try:
             ftp = ftputil.FTPHost(host.ip, 'anonymous', '@anonymous')
-
             return FtpCrawler(host, ftp, es)
         except ftputil.error.PermanentError as e:
-            logger.info('FTP permanent error for host: %s' % (host,))
+            logger.info('FTP permanent error for host: %s', (host,))
         except ftputil.error.FTPOSError as e:
-            logger.info('FTP OS error for host: %s' % (host,))
+            logger.info('FTP OS error for host: %s', (host,))
 
 
     #TODO possible feature envy
@@ -213,13 +223,13 @@ class CrawlerFactory():
         try:
             conn.connect(host.ip, port)
         except socket.error:
-            logger.info('socket error for host: %s' % (host,))
+            logger.info('socket error for host: %s', (host,))
             return False
         except smb.base.NotConnectedError:
-            logger.info('SMB not connected error for host: %s' % (host,))
+            logger.info('SMB not connected error for host: %s', (host,))
             return False
         except smb.base.SMBTimeout as e:
-            logger.info('SMB timeout for host: %s' % (host,))
+            logger.info('SMB timeout for host: %s', (host,))
             return False
 
         return True
