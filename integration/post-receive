@@ -1,0 +1,3 @@
+#!/bin/sh
+#TODO check if var exists
+GIT_WORK_TREE=$LASE_HOME git checkout -f
