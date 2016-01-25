@@ -5,12 +5,12 @@ from flask import Flask
 from flask import request, jsonify, render_template, url_for
 import elasticsearch
 
+import config
 from src.utils.cache import LaseRedisCache
 from pagination import Pagination
-from config import elastic as elastic
 
 app = Flask(__name__)
-app.config.from_object('config.api')
+app.config.from_object('config')
 
 
 def url_for_other_page(page):
@@ -109,7 +109,7 @@ def elastic_search(query_str, page, filters = None):
             }
         }
 
-    return es.search(index=elastic.INDEX, body=query_body)
+    return es.search(index=config.INDEX, body=query_body)
 
 
 def append_if_exists(param, queries):

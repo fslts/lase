@@ -77,8 +77,8 @@ class SmbCrawler(AbstractCrawler):
 
                 #TODO refactoring
                 file_type = 'dir' if item.isDirectory else 'file'
-                extension = None if item.isDirectory or '.' not in item.filename
-                                 else item.filename.split('.')[-1]
+                extension = (None if item.isDirectory or '.' not in item.filename
+                                  else item.filename.split('.')[-1])
 
                 lase_item = LaseItem(item.filename,
                                      full_path,
@@ -154,8 +154,8 @@ class FtpCrawler(AbstractCrawler):
         except ftputil.error.PermanentError as e:
             logger.info('FTP permanent error for host: %s' % (self._host,))
 
-        extension = None if file_type == 'dir' or '.' not in item
-                         else item.split('.')[-1]
+        extension = (None if file_type == 'dir' or '.' not in item
+                          else item.split('.')[-1])
 
         full_path = self._schema + self._host.full_host_name() + path
 

@@ -5,7 +5,7 @@ import logging
 import elasticsearch
 from elasticsearch import helpers
 
-import config.elastic as conf
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +25,15 @@ class LaseElasticImporter(AbstractProcessor):
         self._create_index()
 
     def _create_index(self):
-        if not self._es.indices.exists(conf.INDEX):
-            self._es.indices.create(conf.INDEX,
-                                    body={'settings':conf.SETTINGS,
-                                          'mappings':conf.MAPPING_V2})
+        if not self._es.indices.exists(config.INDEX):
+            self._es.indices.create(config.INDEX,
+                                    body={'settings':config.SETTINGS,
+                                          'mappings':config.MAPPING_V2})
 
 
     def _process(self, lase_item):
-        self._es.index(index=conf.INDEX,
-                       doc_type=conf.DOC_TYPE,
+        self._es.index(index=config.INDEX,
+                       doc_type=config.DOC_TYPE,
                        id=lase_item.id(),
                        body={'filename':lase_item.filename,
                              'path':lase_item.path,
@@ -78,12 +78,12 @@ class LaseElasticImporter(AbstractProcessor):
 
         to_delete = helpers.scan(self._es,
                                  query=query,
-                                 index=conf.INDEX,
-                                 doc_type=conf.DOC_TYPE)
+                                 index=config.INDEX,
+                                 doc_type=config.DOC_TYPE)
 
         deleted = 0
         for item in to_delete:
-            self._es.delete(index=conf.INDEX, doc_type=conf.DOC_TYPE, id=item['_id'])
+            self._es.delete(index=config.INDEX, doc_type=config.DOC_TYPE, id=item['_id'])
             deleted += 1
 
         logger.info('deleted %s items for host %s' % (deleted, self._host.ip))

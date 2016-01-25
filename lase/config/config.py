@@ -1,3 +1,27 @@
+#ranges to be scanned in nmap format
+ranges = [
+    '147.175.176.2-254',
+    '147.175.177.2-254',
+    '147.175.178.2-254',
+    '147.175.179.2-254',
+    '147.175.180.2-254',
+    '147.175.181.2-254',
+    '147.175.182.2-254',
+    '147.175.183.2-254',
+    '147.175.186.2-254',
+    '147.175.187.2-254',
+    '147.175.192.2-254',
+    '147.175.193.2-254',
+    '147.175.194.2-254',
+    '147.175.196.2-254',
+    '147.175.197.2-254',
+    '147.175.199.2-254',
+    '147.175.189.2-254',
+]
+
+# stdout if empty
+LOG_FILE = ''
+
 INDEX = 'lase_alt'
 DOC_TYPE = 'file'
 
@@ -144,3 +168,20 @@ MAPPING_V1 = {
         }
     }
 }
+
+API_HOST = '0.0.0.0'
+API_PORT = 8080
+
+# Statement for enabling the development environment
+DEBUG = True
+
+# Application threads. A common general assumption is
+# using 2 per available processor cores - to handle
+# incoming requests using one and performing background
+# operations using the other.
+THREADS_PER_PAGE = 2
+
+# Secret key for signing cookies
+SECRET_KEY = "secret"
+
+

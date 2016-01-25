@@ -26,6 +26,13 @@ def help_long():
     print('      --help                display this help text and exit')
 
 
+def logger_config():
+    if  config.LOG_FILE:
+        logging.basicConfig(stream=sys.stdout, level=logging.WARN)
+    else:
+        logging.basicConfig(filename=config.LOG_FILE, level=logging.WARN)
+
+
 def main(argv):
     if not argv:
         help()
@@ -58,6 +65,6 @@ if __name__ == '__main__':
     reload(sys)
     sys.setdefaultencoding('utf-8')
 
-    logging.basicConfig(stream=sys.stdout, level=logging.WARN)
+    logger_config()
 
     main(sys.argv[1:])

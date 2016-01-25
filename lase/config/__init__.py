@@ -1,1 +1,1 @@
-from ranges import ranges
+from config import *
