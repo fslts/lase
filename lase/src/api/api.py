@@ -151,14 +151,9 @@ def normalize_host(host):
         return None
     if re.match('^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', host):
         return host
-    elif host.endswith('.ynet.sk'):
-        try:
-            return socket.gethostbyname(host)
-        except socket.gaierror:
-            return None
     else:
         try:
-            return socket.gethostbyname(host + '.ynet.sk')
+            return socket.gethostbyname(host)
         except socket.gaierror:
             return None
 
