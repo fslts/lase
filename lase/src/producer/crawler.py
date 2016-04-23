@@ -114,7 +114,12 @@ class SmbCrawler(AbstractCrawler):
                     if not share.isSpecial)
         except smb.base.SMBTimeout as e:
             logger.info('SMB timeout for host: %s' % (self._host,))
-            return None
+            return []
+        except smb.smb_structs.OperationFailure as e:
+            logger.info('SMB operation failure for host %s: %s',
+                        (self._host, e,))
+            return []
+
 
 
 class FtpCrawler(AbstractCrawler):
