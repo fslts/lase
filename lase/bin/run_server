@@ -1,3 +1,3 @@
 #! /bin/bash
 #TODO check if var exists
-$LASE_HOME/env/bin/gunicorn lase:api.app
+$LASE_HOME/env/bin/gunicorn lase:api.app --chdir $LASE_HOME/lase
