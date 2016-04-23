@@ -1,0 +1,15 @@
+[Unit]
+Description=LASE api
+#Requires=gunicorn.socket
+After=network.target
+
+[Service]
+PIDFile=/run/lase_backend.pid
+WorkingDirectory=$LASE_HOME
+ExecStart=/opt/lase/env/bin/gunicorn -c /opt/lase/integration/gunicorn.conf.py --pid /run/lase_backend.pid --chdir /opt/lase/lase lase:api.app
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
