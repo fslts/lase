@@ -108,6 +108,7 @@ def elastic_search(query_str, page, filters = None):
                 'must': filters
             }
         }
+    print(query_body)
 
     return es.search(index=config.INDEX, body=query_body)
 
@@ -170,7 +171,7 @@ def get_size_range_filter(field_name, from_value=None, to_value=None):
     if from_value:
         from_mb = int(from_value) * 1024 * 1024
     if to_value:
-        to_mb = int(from_value) * 1024 * 1024
+        to_mb = int(to_value) * 1024 * 1024
 
     return get_range_filter(field_name, from_mb, to_mb)
 
