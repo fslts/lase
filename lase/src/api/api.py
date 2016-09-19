@@ -108,7 +108,6 @@ def elastic_search(query_str, page, filters = None):
                 'must': filters
             }
         }
-    print(query_body)
 
     return es.search(index=config.INDEX, body=query_body)
 
