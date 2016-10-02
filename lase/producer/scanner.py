@@ -23,6 +23,12 @@ class ScannedHost(object):
     def host_name(self):
         return self.full_host_name().split('.')[0]
 
+    def smb_open(self):
+        return 445 in self.ports or 139 in self.ports
+
+    def ftp_open(self):
+        return 21 in self.ports
+
 
 class OnlineScanner(object):
     """Checks if FTP and SMB are available in IPs specified in config. Nmap is

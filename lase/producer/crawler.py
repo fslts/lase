@@ -45,10 +45,10 @@ class Crawler(object):
         """Factory method for crawler. Produces correct instance and creates
         neccessary connections."""
 
-        if Crawler._smb_open(host):
+        if host.smb_open():
             yield Crawler._produce_smb(host, processor)
 
-        if _ftp_open(host):
+        if host.ftp_open():
             #TODO null object
             c = Crawler._produce_ftp(host, processor)
             if c:
@@ -78,15 +78,6 @@ class Crawler(object):
         except ftputil.error.FTPOSError as e:
             logger.info('FTP OS error for host: %s', (host,))
 
-
-    #TODO possible feature envy
-    @staticmethod
-    def _smb_open(host):
-        return 445 in host.ports or 139 in host.ports
-
-    @staticmethod
-    def _ftp_open(host):
-        return 21 in host.ports
 
     #TODO possible feature envy
     @staticmethod
