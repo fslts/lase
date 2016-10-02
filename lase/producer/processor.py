@@ -9,7 +9,7 @@ import config
 
 logger = logging.getLogger(__name__)
 
-class Processor():
+class Processor(object):
 
     def process(self, item):
         self._process(item)

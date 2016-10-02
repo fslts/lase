@@ -8,7 +8,8 @@ import ipaddress
 from utils.cache import LaseRedisCache
 import crawler
 
-class ScannedHost:
+class ScannedHost(object):
+
     def __init__(self, ip, ports):
         self.ip = ip
         self.ports = ports
@@ -23,7 +24,7 @@ class ScannedHost:
         return self.full_host_name().split('.')[0]
 
 
-class OnlineScanner:
+class OnlineScanner(object):
     """Checks if FTP and SMB are available in IPs specified in config. Nmap is
     used for online scanning."""
 

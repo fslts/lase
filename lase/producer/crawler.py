@@ -16,7 +16,7 @@ LaseItem = namedtuple('LaseItem', ['id', 'filename', 'path', 'parent', 'host',
                                    'extension', 'last_modified'])
 
 
-class Crawler:
+class Crawler(object):
 
     def crawl(self):
         try:
