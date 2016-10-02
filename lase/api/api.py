@@ -6,7 +6,7 @@ from flask import request, jsonify, render_template, url_for
 import elasticsearch
 
 import config
-from src.utils.cache import LaseRedisCache
+from utils.cache import LaseRedisCache
 from pagination import Pagination
 
 app = Flask(__name__)

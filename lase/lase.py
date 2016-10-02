@@ -3,8 +3,8 @@ import getopt
 import logging
 
 import config
-import src.producer as producer
-import src.api as api
+import producer
+import api
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ import socket
 #in python3 stdlib
 import ipaddress
 
-from src.utils.cache import LaseRedisCache
+from utils.cache import LaseRedisCache
 import crawler
 
 class ScannedHost:
