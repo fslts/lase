@@ -34,7 +34,7 @@ class LaseElasticImporter(AbstractProcessor):
     def _process(self, lase_item):
         self._es.index(index=config.INDEX,
                        doc_type=config.DOC_TYPE,
-                       id=lase_item.id(),
+                       id=lase_item.id,
                        body={'filename':lase_item.filename,
                              'path':lase_item.path,
                              'parent':lase_item.parent,
@@ -72,7 +72,7 @@ class LaseElasticImporter(AbstractProcessor):
         }
 
         # Elastic probably need to flush some changes, so we need to wait
-        # a little. When there was no sleep records with correct time was
+        # a little. When there was no sleep records with correct time were
         # deleted
         time.sleep(1)
 

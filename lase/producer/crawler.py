@@ -2,6 +2,7 @@ import socket
 import datetime
 import hashlib
 import logging
+from collections import namedtuple
 
 import ftputil
 import smb
@@ -10,23 +11,9 @@ from smb.SMBConnection import SMBConnection
 
 logger = logging.getLogger(__name__)
 
-
-class LaseItem():
-
-    def __init__(self, filename, path, parent, host, share_type,
-                 size, file_type, extension, last_modified):
-        self.filename = filename
-        self.path = path
-        self.parent = parent
-        self.host = host
-        self.share_type = share_type
-        self.size = size
-        self.file_type = file_type
-        self.extension = extension
-        self.last_modified = last_modified
-
-    def id(self):
-        return _hash_id(self.path)
+LaseItem = namedtuple('LaseItem', ['id', 'filename', 'path', 'parent', 'host',
+                                   'share_type', 'size', 'file_type',
+                                   'extension', 'last_modified'])
 
 
 class AbstractCrawler:
@@ -80,7 +67,8 @@ class SmbCrawler(AbstractCrawler):
                 extension = (None if item.isDirectory or '.' not in item.filename
                                   else item.filename.split('.')[-1])
 
-                lase_item = LaseItem(item.filename,
+                lase_item = LaseItem(_hash_id(full_path),
+                                     item.filename,
                                      full_path,
                                      parent_id,
                                      self._host.ip,
@@ -164,7 +152,8 @@ class FtpCrawler(AbstractCrawler):
 
         full_path = self._schema + self._host.full_host_name() + path
 
-        lase_item = LaseItem(item,
+        lase_item = LaseItem(_hash_id(full_path),
+                             item,
                              full_path,
                              parent_id,
                              self._host.ip,
