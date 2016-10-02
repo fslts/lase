@@ -169,18 +169,15 @@ class FtpCrawler(AbstractCrawler):
 class CrawlerFactory():
 
     def produce(self, host, processor):
-        crawlers = []
 
         if self._smb_open(host):
-            crawlers.append(self._produce_smb(host, processor))
+            yield self._produce_smb(host, processor))
 
         if self._ftp_open(host):
             #TODO null object
             c = self._produce_ftp(host, processor)
             if c:
-                crawlers.append(c)
-
-        return crawlers
+                yield c
 
     def _produce_smb(self, host, es):
         conn = SMBConnection('', '', 'lase', host.host_name(),
