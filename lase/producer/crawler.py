@@ -81,7 +81,7 @@ class SmbCrawler(AbstractCrawler):
                 self._proc.process(lase_item)
 
                 if item.isDirectory:
-                    self._smbwalk(share, lase_item.id(),
+                    self._smbwalk(share, lase_item.id,
                                   path + item.filename + '/')
 
         except smb.smb_structs.OperationFailure as e:
