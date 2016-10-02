@@ -32,7 +32,7 @@ class LaseElasticImporter(Processor):
         if not self._es.indices.exists(config.INDEX):
             self._es.indices.create(config.INDEX,
                                     body={'settings':config.SETTINGS,
-                                          'mappings':config.MAPPING_V2})
+                                          'mappings':config.MAPPING})
 
 
     def _process(self, lase_item):

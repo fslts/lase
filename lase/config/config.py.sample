@@ -38,6 +38,8 @@ SETTINGS =  {
     }
 }
 
+MAPPING = MAPPING_V2
+
 # mapping for version > 2 of elasticsearch
 MAPPING_V2 = {
     'file' : {
