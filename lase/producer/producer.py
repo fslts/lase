@@ -1,9 +1,9 @@
 import multiprocessing
 import logging
 
-from . import crawler
-from . import processor
-from . import scanner
+from .crawler import Crawler
+from .processor import Processor
+from .scanner import OnlineScanner
 
 
 logger = logging.getLogger(__name__)
@@ -28,12 +28,11 @@ def crawl_seq(ranges):
 
 def scan(ranges):
 
-    osf = scanner.OnlineScannerFactory()
-    osc = osf.produce()
+    osc = OnlineScanner.produce()
 
     scanned = osc.scan_range(_ranges_to_str(ranges))
 
-    logging.info('scanned; %s hosts found' % (len(scanned),))
+    logging.info('scanned; %s hosts found', len(scanned))
 
     return scanned
 
@@ -44,10 +43,9 @@ def _ranges_to_str(ranges):
 
 def _scan_host(host):
 
-    cf = crawler.CrawlerFactory()
-    proc = processor.LaseElasticImporter(host)
+    proc = Processor.produce(host)
 
-    for crwl in cf.produce(host, proc):
+    for crwl in Crawler.produce(host, proc):
         crwl.crawl()
 
     proc.cleanup()

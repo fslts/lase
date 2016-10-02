@@ -24,6 +24,8 @@ class ScannedHost:
 
 
 class OnlineScanner:
+    """Checks if FTP and SMB are available in IPs specified in config. Nmap is
+    used for online scanning."""
 
     def __init__(self, nmap, cache):
         self._nm = nmap
@@ -46,9 +48,8 @@ class OnlineScanner:
         return [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
 
 
-class OnlineScannerFactory():
-
-    def produce(self):
+    @staticmethod
+    def produce():
         nm = nmap.PortScanner()
         cache = LaseRedisCache()
         return OnlineScanner(nm, cache)

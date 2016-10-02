@@ -9,13 +9,17 @@ import config
 
 logger = logging.getLogger(__name__)
 
-class AbstractProcessor():
+class Processor():
 
     def process(self, item):
         self._process(item)
 
+    @staticmethod
+    def produce(host):
+        return LaseElasticImporter(host)
 
-class LaseElasticImporter(AbstractProcessor):
+
+class LaseElasticImporter(Processor):
 
     def __init__(self, host):
         self._es = elasticsearch.Elasticsearch()

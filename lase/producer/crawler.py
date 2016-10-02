@@ -16,7 +16,7 @@ LaseItem = namedtuple('LaseItem', ['id', 'filename', 'path', 'parent', 'host',
                                    'extension', 'last_modified'])
 
 
-class AbstractCrawler:
+class Crawler:
 
     def crawl(self):
         try:
@@ -40,8 +40,73 @@ class AbstractCrawler:
     def _special_filename(self, item):
         return item in ['.', '..', '']
 
+    @staticmethod
+    def produce(host, processor):
+        """Factory method for crawler. Produces correct instance and creates
+        neccessary connections."""
 
-class SmbCrawler(AbstractCrawler):
+        if Crawler._smb_open(host):
+            yield Crawler._produce_smb(host, processor)
+
+        if _ftp_open(host):
+            #TODO null object
+            c = Crawler._produce_ftp(host, processor)
+            if c:
+                yield c
+
+    @staticmethod
+    def _produce_smb(host, es):
+        conn = SMBConnection('', '', 'lase', host.host_name(),
+                             use_ntlm_v2 = True)
+        connected = False
+
+        if 445 in host.ports:
+            connected = Crawler._smb_connect(conn, host, 445)
+
+        if not connected and 139 in host.ports:
+            connected = Crawler._smb_connect(conn, host, 139)
+
+        return SmbCrawler(host, conn, es)
+
+    @staticmethod
+    def _produce_ftp(host, es):
+        try:
+            ftp = ftputil.FTPHost(host.ip, 'anonymous', '@anonymous')
+            return FtpCrawler(host, ftp, es)
+        except ftputil.error.PermanentError as e:
+            logger.info('FTP permanent error for host: %s', (host,))
+        except ftputil.error.FTPOSError as e:
+            logger.info('FTP OS error for host: %s', (host,))
+
+
+    #TODO possible feature envy
+    @staticmethod
+    def _smb_open(host):
+        return 445 in host.ports or 139 in host.ports
+
+    @staticmethod
+    def _ftp_open(host):
+        return 21 in host.ports
+
+    #TODO possible feature envy
+    @staticmethod
+    def _smb_connect(conn, host, port):
+        try:
+            conn.connect(host.ip, port)
+        except socket.error:
+            logger.info('socket error for host: %s', (host,))
+            return False
+        except smb.base.NotConnectedError:
+            logger.info('SMB not connected error for host: %s', (host,))
+            return False
+        except smb.base.SMBTimeout as e:
+            logger.info('SMB timeout for host: %s', (host,))
+            return False
+
+        return True
+
+
+class SmbCrawler(Crawler):
     def __init__(self, host, conn, proc):
         self._host = host
         self._conn = conn
@@ -110,7 +175,7 @@ class SmbCrawler(AbstractCrawler):
 
 
 
-class FtpCrawler(AbstractCrawler):
+class FtpCrawler(Crawler):
 
     def __init__(self, host, conn, proc):
         self._host = host
@@ -164,66 +229,6 @@ class FtpCrawler(AbstractCrawler):
                              self._last_modified_str(last_modified))
 
         self._proc.process(lase_item)
-
-
-class CrawlerFactory():
-
-    def produce(self, host, processor):
-
-        if self._smb_open(host):
-            yield self._produce_smb(host, processor))
-
-        if self._ftp_open(host):
-            #TODO null object
-            c = self._produce_ftp(host, processor)
-            if c:
-                yield c
-
-    def _produce_smb(self, host, es):
-        conn = SMBConnection('', '', 'lase', host.host_name(),
-                             use_ntlm_v2 = True)
-        connected = False
-
-        if 445 in host.ports:
-            connected = self._smb_connect(conn, host, 445)
-
-        if not connected and 139 in host.ports:
-            connected = self._smb_connect(conn, host, 139)
-
-        return SmbCrawler(host, conn, es)
-
-    def _produce_ftp(self, host, es):
-        try:
-            ftp = ftputil.FTPHost(host.ip, 'anonymous', '@anonymous')
-            return FtpCrawler(host, ftp, es)
-        except ftputil.error.PermanentError as e:
-            logger.info('FTP permanent error for host: %s', (host,))
-        except ftputil.error.FTPOSError as e:
-            logger.info('FTP OS error for host: %s', (host,))
-
-
-    #TODO possible feature envy
-    def _smb_open(self, host):
-        return 445 in host.ports or 139 in host.ports
-
-    def _ftp_open(self, host):
-        return 21 in host.ports
-
-    #TODO possible feature envy
-    def _smb_connect(self, conn, host, port):
-        try:
-            conn.connect(host.ip, port)
-        except socket.error:
-            logger.info('socket error for host: %s', (host,))
-            return False
-        except smb.base.NotConnectedError:
-            logger.info('SMB not connected error for host: %s', (host,))
-            return False
-        except smb.base.SMBTimeout as e:
-            logger.info('SMB timeout for host: %s', (host,))
-            return False
-
-        return True
 
 
 def _hash_id(path):
