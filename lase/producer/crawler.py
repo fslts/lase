@@ -47,12 +47,8 @@ class Crawler(object):
 
         if host.smb_open():
             yield Crawler._produce_smb(host, processor)
-
         if host.ftp_open():
-            #TODO null object
-            c = Crawler._produce_ftp(host, processor)
-            if c:
-                yield c
+            yield Crawler._produce_ftp(host, processor)
 
     @staticmethod
     def _produce_smb(host, es):
@@ -74,9 +70,11 @@ class Crawler(object):
             ftp = ftputil.FTPHost(host.ip, 'anonymous', '@anonymous')
             return FtpCrawler(host, ftp, es)
         except ftputil.error.PermanentError as e:
-            logger.info('FTP permanent error for host: %s', (host,))
+            logger.info('FTP permanent error for host: %s', host)
+            return NullCrawler()
         except ftputil.error.FTPOSError as e:
-            logger.info('FTP OS error for host: %s', (host,))
+            logger.info('FTP OS error for host: %s', host)
+            return NullCrawler()
 
 
     #TODO possible feature envy
@@ -220,6 +218,11 @@ class FtpCrawler(Crawler):
                              self._last_modified_str(last_modified))
 
         self._proc.process(lase_item)
+
+
+class NullCrawler(Crawler):
+    def crawl():
+        pass
 
 
 def _hash_id(path):
