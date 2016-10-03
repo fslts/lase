@@ -40,7 +40,8 @@ class OnlineScanner(object):
 
     def scan_range(self, range_):
         res = []
-        nmap_res = self._nm.scan(hosts=range_, ports='21,139,445', arguments=' --max-retries 0 -Pn')
+        nmap_res = self._nm.scan(hosts=range_, ports='21,139,445',
+                                 arguments=' --max-retries 0 -Pn')
 
         for ip, data in nmap_res['scan'].items():
             ports = self._open_ports(data)
@@ -52,8 +53,8 @@ class OnlineScanner(object):
         return res
 
     def _open_ports(self, data):
-        return [ port for port, port_data in data['tcp'].items() if port_data['state'] == 'open' ]
-
+        return [ port for port, port_data in data['tcp'].items()
+                      if port_data['state'] == 'open' ]
 
     @staticmethod
     def produce():

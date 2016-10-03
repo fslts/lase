@@ -20,8 +20,8 @@ class Crawler(object):
 
     def crawl(self):
         try:
-            logger.info('starting to crawl host %s',
-                        (self._host.full_host_name(),))
+            logger.info('crawling started for host %s',
+                         self._host.full_host_name())
             self._crawl()
         except socket.timeout:
             logger.info('socket timeout')
@@ -83,13 +83,13 @@ class Crawler(object):
         try:
             conn.connect(host.ip, port)
         except socket.error:
-            logger.info('socket error for host: %s', (host,))
+            logger.info('socket error for host: %s', host)
             return False
         except smb.base.NotConnectedError:
-            logger.info('SMB not connected error for host: %s', (host,))
+            logger.info('SMB not connected error for host: %s', host)
             return False
         except smb.base.SMBTimeout as e:
-            logger.info('SMB timeout for host: %s', (host,))
+            logger.info('SMB timeout for host: %s', host)
             return False
 
         return True
@@ -139,14 +139,11 @@ class SmbCrawler(Crawler):
                                   path + item.filename + '/')
 
         except smb.smb_structs.OperationFailure as e:
-            logger.info('SMB operation failure for host %s: %s',
-                        (self._host, e,))
+            logger.info('SMB operation failure for host %s: %s', self._host, e)
         except smb.base.SMBTimeout:
-            logger.info('SMB timeout for host: %s',
-                        (self._host,))
+            logger.info('SMB timeout for host: %s', self._host)
         except smb.base.NotConnectedError:
-            logger.info('SMB not connected error for host: %s',
-                        (self._host,))
+            logger.info('SMB not connected error for host: %s', self._host)
 
 
     def _shares(self):
@@ -155,11 +152,10 @@ class SmbCrawler(Crawler):
                     for share in self._conn.listShares()
                     if not share.isSpecial)
         except smb.base.SMBTimeout as e:
-            logger.info('SMB timeout for host: %s' % (self._host,))
+            logger.info('SMB timeout for host: %s', self._host)
             return []
         except smb.smb_structs.OperationFailure as e:
-            logger.info('SMB operation failure for host %s: %s',
-                        (self._host, e,))
+            logger.info('SMB operation failure for host %s: %s', self._host, e)
             return []
 
 
@@ -177,8 +173,7 @@ class FtpCrawler(Crawler):
         try:
             self._ftpwalk(None)
         except ftputil.error.InaccessibleLoginDirError as e:
-            logger.info('FTP inaccessible login dir for host: %s',
-                        (self._host,))
+            logger.info('FTP inaccessible login dir for host: %s', self._host)
 
     def _ftpwalk(self, parent_id):
         for root, dirs, files in self._ftp.walk('/'):
@@ -199,7 +194,7 @@ class FtpCrawler(Crawler):
             size = self._ftp.path.getsize(path)
             last_modified = self._ftp.path.getmtime(path)
         except ftputil.error.PermanentError as e:
-            logger.info('FTP permanent error for host: %s' % (self._host,))
+            logger.info('FTP permanent error for host: %s', self._host)
 
         extension = (None if file_type == 'dir' or '.' not in item
                           else item.split('.')[-1])

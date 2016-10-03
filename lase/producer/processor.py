@@ -90,4 +90,4 @@ class LaseElasticImporter(Processor):
             self._es.delete(index=config.INDEX, doc_type=config.DOC_TYPE, id=item['_id'])
             deleted += 1
 
-        logger.info('deleted %s items for host %s' % (deleted, self._host.ip))
+        logger.info('deleted %s items for host %s', deleted, self._host.ip)
