@@ -35,27 +35,36 @@ def after_request(response):
 def index():
     return render_template('index.html')
 
+
 @app.route('/search', methods=['GET'])
 def gui_search():
-    res = search()
+    res, errs = search()
+
+    if errs:
+        return render_template('errors.html', errors=errs)
 
     page = int(request.args.get('page')) if request.args.get('page') else 1
-
 
     #TODO size param
     pagination = Pagination(page, 100, res['total'])
     return render_template('results.html',
-        results=res,
-        pagination=pagination
-    )
+                           results=res,
+                           pagination=pagination)
 
 
 @app.route('/api/search', methods=['GET'])
 def api_search():
-    return jsonify({'success':True, 'data':search()})
+    data, errs = search()
+    if errs:
+        return jsonify({'errors': errs})
+    return jsonify({'data': data})
 
 
 def search():
+    validation_errs = validate_args()
+    if validation_errs:
+        return ([], validation_errs,)
+
     query = get_search_query(request.args.get('query'))
 
     filters = []
@@ -69,16 +78,31 @@ def search():
                     ),filters)
 
     page = int(request.args.get('page')) if request.args.get('page') else 1
-    return transform_res(elastic_search(query, page, filters)) if query else null_result()
+
+    if query:
+        return (transform_res(elastic_search(query, page, filters)), [],)
+    return (null_result(), [],)
+
 
 def null_result():
     return { 'total':0, 'items':[] }
+
+def validate_args():
+    errs = []
+
+    # content type filter has no meaning when searching for directories
+    if request.args.get('file_type') == 'dir' and request.args.get('content_type'):
+        errs.append({'code': 'lase.err.validation.dir_has_no_content_type'})
+
+    return errs
+
 
 def transform_res(elastic_data):
     return {
         'total': elastic_data['hits']['total'],
         'items': transform_hits(elastic_data['hits']['hits'])
     }
+
 
 def transform_hits(hits):
     res = []
@@ -88,6 +112,7 @@ def transform_hits(hits):
         final_item['online'] = len(cache.load_host(final_item['host'])) > 0
         res.append(final_item)
     return res
+
 
 def elastic_search(query_str, page, filters = None):
     es = elasticsearch.Elasticsearch()
@@ -116,6 +141,7 @@ def append_if_exists(param, queries):
     if param:
         queries.append(param)
 
+
 def get_search_query(term):
     if term:
         return {
@@ -138,13 +164,16 @@ def get_search_query(term):
         }
     return None
 
+
 def get_filter(field_name, filter_value):
     if field_name and filter_value and filter_value != 'all':
         return { 'term': { field_name: filter_value } }
     return None
 
+
 def get_host_filter(host):
     return get_filter('host', normalize_host(host))
+
 
 def normalize_host(host):
     if not host:
@@ -163,6 +192,7 @@ def get_list_filter(field_name, filter_value):
         return { 'terms': { field_name: filter_value } }
     return None
 
+
 def get_size_range_filter(field_name, from_value=None, to_value=None):
     from_mb = None
     to_mb = None
@@ -173,6 +203,7 @@ def get_size_range_filter(field_name, from_value=None, to_value=None):
         to_mb = int(to_value) * 1024 * 1024
 
     return get_range_filter(field_name, from_mb, to_mb)
+
 
 def get_range_filter(field_name, from_value=None, to_value=None):
     if not field_name or (from_value is None and to_value is None):
@@ -190,6 +221,7 @@ def get_range_filter(field_name, from_value=None, to_value=None):
         res['range'][field_name]['lte'] = to_value
 
     return res
+
 
 def get_content_type_filter(content_type):
     if content_type == 'video':
