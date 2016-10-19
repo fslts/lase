@@ -1,6 +1,6 @@
 # LASE
 
-| A LAN crawler and search engine
+> A LAN crawler and search engine
 
 ## Description
 
