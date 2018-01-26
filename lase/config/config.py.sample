@@ -45,7 +45,7 @@ MAPPING_V2 = {
     'file' : {
         # expire after one week so the data from inactive machines wont show up
         '_ttl': {
-            'enabled': true,
+            'enabled': True,
             'default': '1w'
         },
         'properties' : {
@@ -108,7 +108,7 @@ MAPPING_V1 = {
     'file' : {
         # expire after one week so the data from inactive machines wont show up
         '_ttl': {
-            'enabled': true,
+            'enabled': True,
             'default': '1w'
         },
         'properties' : {
