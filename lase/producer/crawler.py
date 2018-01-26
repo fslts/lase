@@ -216,7 +216,7 @@ class FtpCrawler(Crawler):
 
 
 class NullCrawler(Crawler):
-    def crawl():
+    def crawl(self):
         pass
 
 
