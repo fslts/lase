@@ -7,7 +7,7 @@ import elasticsearch
 
 import config
 from utils.cache import LaseRedisCache
-from pagination import Pagination
+from .pagination import Pagination
 
 app = Flask(__name__)
 app.config.from_object('config')

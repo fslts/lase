@@ -6,7 +6,7 @@ import socket
 import ipaddress
 
 from utils.cache import LaseRedisCache
-import crawler
+from . import crawler
 
 class ScannedHost(object):
 
