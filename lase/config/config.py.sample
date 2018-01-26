@@ -43,6 +43,11 @@ MAPPING = MAPPING_V2
 # mapping for version > 2 of elasticsearch
 MAPPING_V2 = {
     'file' : {
+        # expire after one week so the data from inactive machines wont show up
+        '_ttl': {
+            'enabled': true,
+            'default': '1w'
+        },
         'properties' : {
             'filename' : {
                 'type': 'multi_field',
@@ -101,6 +106,11 @@ MAPPING_V2 = {
 # mapping for pre 2 version of elasticsearch
 MAPPING_V1 = {
     'file' : {
+        # expire after one week so the data from inactive machines wont show up
+        '_ttl': {
+            'enabled': true,
+            'default': '1w'
+        },
         'properties' : {
             'filename' : {
                 'type': 'multi_field',
