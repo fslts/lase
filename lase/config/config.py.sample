@@ -97,7 +97,7 @@ MAPPING_V2 = {
             },
             'crawled': {
                 'type': 'date',
-                'format': 'epoch_second'
+                'format': 'yyyy-MM-dd HH:mm:ss'
             }
         }
     }
@@ -159,7 +159,7 @@ MAPPING_V1 = {
             },
             'crawled': {
                 'type': 'date',
-                'format': 'epoch_second'
+                'format': 'yyyy-MM-dd HH:mm:ss'
             }
         }
     }

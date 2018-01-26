@@ -1,6 +1,7 @@
 import time
 import math
 import logging
+import datetime
 
 import elasticsearch
 from elasticsearch import helpers
@@ -23,7 +24,7 @@ class LaseElasticImporter(Processor):
 
     def __init__(self, host):
         self._es = elasticsearch.Elasticsearch()
-        self._crawled = math.floor(time.time())
+        self._crawled = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self._host = host
 
         self._create_index()
