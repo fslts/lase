@@ -61,9 +61,10 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    # init mainly because of python 2
-    reload(sys)
-    sys.setdefaultencoding('utf-8')
+    if sys.version_info < (3,0):
+        # init mainly because of python 2
+        reload(sys)
+        sys.setdefaultencoding('utf-8')
 
     logger_config()
 
