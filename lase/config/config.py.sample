@@ -38,56 +38,40 @@ SETTINGS =  {
     }
 }
 
-MAPPING = MAPPING_V2
-
-# mapping for version > 2 of elasticsearch
-MAPPING_V2 = {
+MAPPING = {
     'file' : {
-        # expire after one week so the data from inactive machines wont show up
-        '_ttl': {
-            'enabled': True,
-            'default': '1w'
-        },
         'properties' : {
             'filename' : {
-                'type': 'multi_field',
+                'type': 'text',
+		'analyzer' : 'filename_words',
                 'fields': {
                     'partial': {
-                        'type' : 'string',
+                        'type' : 'text',
                         'analyzer' : 'filename_ngram',
                         'search_analyzer' : 'filename_words'
-                    },
-                    'full': {
-                        'type' : 'string',
-                        'analyzer' : 'filename_words',
                     },
                 }
             },
 
             'path': {
-                'type': 'string',
+                'type': 'text',
                 'analyzer' : 'filename_ngram',
                 'search_analyzer' : 'filename_words'
             },
             'parent': {
-                'type': 'string',
-                'index': 'not_analyzed'
+                'type': 'keyword',
             },
             'host': {
-                'type': 'string',
-                'index': 'not_analyzed'
+                'type': 'keyword',
             },
             'file_type': {
-                'type': 'string',
-                'index': 'not_analyzed'
+                'type': 'keyword',
             },
             'extension': {
-                'type': 'string',
-                'index': 'not_analyzed'
+                'type': 'keyword',
             },
             'share_type': {
-                'type': 'string',
-                'index': 'not_analyzed'
+                'type': 'keyword',
             },
             'size': {
                 'type': 'long'
@@ -103,8 +87,8 @@ MAPPING_V2 = {
     }
 }
 
-# mapping for pre 2 version of elasticsearch
-MAPPING_V1 = {
+# mapping for 1.X version of elasticsearch
+MAPPING_DEPR = {
     'file' : {
         # expire after one week so the data from inactive machines wont show up
         '_ttl': {
@@ -164,6 +148,7 @@ MAPPING_V1 = {
         }
     }
 }
+
 
 API_HOST = '0.0.0.0'
 API_PORT = 8080

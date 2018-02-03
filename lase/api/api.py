@@ -123,16 +123,10 @@ def elastic_search(query_str, page, filters = None):
     query_body['size'] = 100
 
     query_body['query'] = {}
-    query_body['query']['filtered'] = {
-        'query': query_str
-    }
+    query_body['query']['bool'] = query_str
 
     if filters:
-        query_body['query']['filtered']['filter'] = {
-            'bool': {
-                'must': filters
-            }
-        }
+        query_body['query']['bool']['filter'] = filters
 
     return es.search(index=config.INDEX, body=query_body)
 
@@ -145,22 +139,20 @@ def append_if_exists(param, queries):
 def get_search_query(term):
     if term:
         return {
-            'bool': {
-                'should': [
-                    {'multi_match' : {
-                        'query': term,
-                        'fields': ['filename^2', 'path'],
-                        'operator': 'and',
-                    }},
-                    {'multi_match' : {
-                        'query': term,
-                        'fields': ['filename^2', 'path'],
-                        'operator': 'and',
-                        'fuzziness': 'AUTO',
-                        'boost':0.2
-                    }}
-                ]
-            }
+            'should': [
+                {'multi_match' : {
+                    'query': term,
+                    'fields': ['filename^2', 'path'],
+                    'operator': 'and',
+                }},
+                {'multi_match' : {
+                    'query': term,
+                    'fields': ['filename^2', 'path'],
+                    'operator': 'and',
+                    'fuzziness': 'AUTO',
+                    'boost':0.2
+                }}
+            ]
         }
     return None
 
