@@ -91,7 +91,7 @@ def validate_args():
     errs = []
 
     # content type filter has no meaning when searching for directories
-    if request.args.get('file_type') == 'dir' and request.args.get('content_type'):
+    if request.args.get('file_type') == 'dir' and request.args.get('content_type', 'all') != 'all':
         errs.append({'code': 'lase.err.validation.dir_has_no_content_type'})
 
     return errs
